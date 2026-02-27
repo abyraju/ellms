@@ -1,0 +1,3575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eszti's Little Library</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* 
+         * Z-INDEX HIERARCHY:
+         * 0 - Base level: headers, search bar section, tables, content, footer
+         * 1 - Search autocomplete overlay
+         * 2 - Modals: settings, add manually, edit, help, confirmation
+         */
+        
+        body {
+            font-family: 'Crimson Pro', serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background-attachment: fixed;
+            color: #e8e6e3;
+            min-height: 100vh;
+        }
+        
+        .grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            z-index: 1;
+        }
+        
+        .app-container {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .search-glow {
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+        }
+        
+        .book-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .book-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .book-card:hover::before {
+            left: 100%;
+        }
+        
+        .status-badge {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .status-to-read {
+            background: rgba(248, 113, 113, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+        
+        .status-reading {
+            background: rgba(250, 204, 21, 0.2);
+            color: #fde047;
+            border: 1px solid rgba(250, 204, 21, 0.3);
+        }
+        
+        .status-finished {
+            background: rgba(134, 239, 172, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(134, 239, 172, 0.3);
+        }
+        
+        .tab-button {
+            position: relative;
+            font-family: 'DM Mono', monospace;
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .tab-button:hover {
+            color: #e8e6e3;
+        }
+        
+        .tab-button.active {
+            color: #e8e6e3;
+        }
+        
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100%;
+            }
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e8e6e3;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        input, select {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e8e6e3;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'Crimson Pro', serif;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a78bfa' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        select:hover {
+            background-color: rgba(255, 255, 255, 0.11);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        select option {
+            background: #1e1b3a;
+            color: #e8e6e3;
+            padding: 10px 14px;
+            font-family: 'Crimson Pro', serif;
+        }
+
+        select option:hover,
+        select option:checked {
+            background: #2d2560;
+            color: #c4b5fd;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        input::placeholder {
+            color: #64748b;
+        }
+        
+        .loader {
+            border: 3px solid rgba(139, 92, 246, 0.3);
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, rgba(15, 12, 41, 0.95), rgba(48, 43, 99, 0.95));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 36px 40px;
+            max-width: 500px;
+            width: 90%;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+        
+        .empty-state svg {
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(139, 92, 246, 0.4);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(139, 92, 246, 0.04);
+            position: relative;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: rgba(139, 92, 246, 0.8);
+            background: rgba(139, 92, 246, 0.1);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            padding: 0;
+        }
+
+        .import-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        .import-tab.active {
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.5);
+            color: #c4b5fd;
+        }
+
+        .import-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.06);
+            color: #e8e6e3;
+        }
+
+        .gs-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .gs-input-row input {
+            flex: 1;
+            font-size: 0.85rem;
+            padding: 10px 14px;
+        }
+
+        .gs-input-row button {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.35);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: #c4b5fd;
+            margin-top: 12px;
+        }
+        
+        /* ── Field spacing ───────────────────────────── */
+        .space-y-4 > div {
+            padding: 4px 4px 2px 4px;
+        }
+
+        .space-y-4 > * + * {
+            margin-top: 18px !important;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-bottom: 7px !important;
+            padding-left: 2px;
+        }
+
+        .modal-content input,
+        .modal-content select {
+            padding: 13px 18px !important;
+        }
+
+        .modal-content select {
+            padding-right: 38px !important;
+        }
+
+        /* ── White / Light theme overrides ──────────── */
+
+        /* Tailwind text utility overrides */
+        .theme-light .text-gray-400,
+        .theme-light .text-gray-300 { color: #3730a3 !important; }
+        .theme-light .text-gray-200 { color: #2e1065 !important; }
+        .theme-light .text-gray-500 { color: #5b21b6 !important; }
+
+        /* Borders */
+        .theme-light .border-white\/10 {
+            border-color: rgba(109, 40, 217, 0.2) !important;
+        }
+
+        /* Tabs */
+        .theme-light .tab-button        { color: #4c1d95 !important; }
+        .theme-light .tab-button:hover  { color: #2e1065 !important; }
+        .theme-light .tab-button.active { color: #2e1065 !important; background: rgba(109,40,217,0.12) !important; }
+
+        /* Cards */
+        .theme-light .glass-card {
+            background: rgba(255, 255, 255, 0.6) !important;
+            border-color: rgba(109, 40, 217, 0.18) !important;
+        }
+
+        /* Inputs & selects */
+        .theme-light input,
+        .theme-light select {
+            background: rgba(255, 255, 255, 0.65) !important;
+            border-color: rgba(109, 40, 217, 0.28) !important;
+            color: #1e1b4b !important;
+        }
+        .theme-light input::placeholder { color: #7c3aed !important; opacity: 0.45; }
+        .theme-light select option {
+            background: #ede9fe !important;
+            color: #1e1b4b !important;
+        }
+
+        /* Buttons */
+        .theme-light .btn-secondary {
+            background: rgba(109, 40, 217, 0.09) !important;
+            border-color: rgba(109, 40, 217, 0.28) !important;
+            color: #3b0764 !important;
+        }
+        .theme-light .btn-secondary:hover {
+            background: rgba(109, 40, 217, 0.16) !important;
+        }
+
+        /* Modals - base */
+        .theme-light .modal-content {
+            background: linear-gradient(145deg, rgba(245,242,255,0.98), rgba(232,226,255,0.98)) !important;
+            border-color: rgba(109, 40, 217, 0.25) !important;
+        }
+
+        /* All text inside modals defaults to readable dark indigo */
+        .theme-light .modal-content,
+        .theme-light .modal-content p,
+        .theme-light .modal-content span,
+        .theme-light .modal-content label,
+        .theme-light .modal-content li,
+        .theme-light .modal-content div { color: #2e1065; }
+
+        /* Headings inside modals */
+        .theme-light .modal-content h2,
+        .theme-light .modal-content h3 { color: #5b21b6 !important; }
+
+        /* Tailwind classes still used inside modals */
+        .theme-light .modal-content .text-gray-400,
+        .theme-light .modal-content .text-gray-300 { color: #3730a3 !important; }
+        .theme-light .modal-content .text-gray-200 { color: #2e1065 !important; }
+
+        /* Import modal tab buttons */
+        .theme-light .import-tab       { color: #4c1d95 !important; border-color: rgba(109,40,217,0.15) !important; }
+        .theme-light .import-tab.active { color: #2e1065 !important; border-color: rgba(109,40,217,0.5) !important; background: rgba(109,40,217,0.1) !important; }
+
+        /* Sort label */
+        .theme-light [style*="color: #64748b"] { color: #4c1d95 !important; }
+        .theme-light [style*="color: #94a3b8"] { color: #3730a3 !important; }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .app-container {
+                padding: 16px 18px !important;
+            }
+            
+            h1 {
+                font-size: 2rem !important;
+            }
+            
+            .glass-card {
+                padding: 16px !important;
+            }
+            
+            .tab-button {
+                font-size: 0.75rem;
+                padding: 8px 12px;
+            }
+            
+            .btn-primary, .btn-secondary {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+            
+            .modal-content {
+                width: 95% !important;
+                padding: 20px !important;
+                max-width: none !important;
+            }
+            
+            .book-card {
+                margin-bottom: 12px;
+            }
+            
+            /* Stack buttons vertically on mobile */
+            .mobile-stack {
+                flex-direction: column !important;
+                width: 100%;
+            }
+            
+            .mobile-stack > * {
+                width: 100% !important;
+            }
+            
+            /* Adjust footer for mobile */
+            .footer-message {
+                font-size: 0.75rem !important;
+                bottom: 10px !important;
+                right: 15px !important;
+            }
+            
+            /* List view responsive adjustments */
+            .book-card.list-view {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grain"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useContext, createContext } = React;
+
+        // ==================== SETTINGS CONTEXT ====================
+        const SettingsContext = createContext({});
+
+        // ==================== CURRENCIES ====================
+        const CURRENCIES = [
+            { code: 'USD', symbol: '$',   name: 'US Dollar' },
+            { code: 'EUR', symbol: '€',   name: 'Euro' },
+            { code: 'GBP', symbol: '£',   name: 'British Pound' },
+            { code: 'JPY', symbol: '¥',   name: 'Japanese Yen' },
+            { code: 'CNY', symbol: '¥',   name: 'Chinese Yuan' },
+            { code: 'INR', symbol: '₹',   name: 'Indian Rupee' },
+            { code: 'HUF', symbol: 'Ft',  name: 'Hungarian Forint' },
+            { code: 'CAD', symbol: 'C$',  name: 'Canadian Dollar' },
+            { code: 'AUD', symbol: 'A$',  name: 'Australian Dollar' },
+            { code: 'CHF', symbol: 'Fr',  name: 'Swiss Franc' },
+            { code: 'KRW', symbol: '₩',   name: 'South Korean Won' },
+            { code: 'BRL', symbol: 'R$',  name: 'Brazilian Real' },
+            { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso' },
+            { code: 'SEK', symbol: 'kr',  name: 'Swedish Krona' },
+            { code: 'NOK', symbol: 'kr',  name: 'Norwegian Krone' },
+            { code: 'DKK', symbol: 'kr',  name: 'Danish Krone' },
+            { code: 'PLN', symbol: 'zl',  name: 'Polish Zloty' },
+            { code: 'TRY', symbol: 'TL',  name: 'Turkish Lira' },
+            { code: 'ZAR', symbol: 'R',   name: 'South African Rand' },
+            { code: 'SGD', symbol: 'S$',  name: 'Singapore Dollar' },
+            { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+            { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
+            { code: 'AED', symbol: 'AED', name: 'UAE Dirham' },
+            { code: 'SAR', symbol: 'SAR', name: 'Saudi Riyal' },
+            { code: 'THB', symbol: 'THB', name: 'Thai Baht' },
+            { code: 'IDR', symbol: 'Rp',  name: 'Indonesian Rupiah' },
+            { code: 'MYR', symbol: 'RM',  name: 'Malaysian Ringgit' },
+            { code: 'PHP', symbol: 'PHP', name: 'Philippine Peso' },
+            { code: 'PKR', symbol: 'Rs',  name: 'Pakistani Rupee' },
+            { code: 'BDT', symbol: 'Tk',  name: 'Bangladeshi Taka' },
+            { code: 'EGP', symbol: 'E£',  name: 'Egyptian Pound' },
+            { code: 'NGN', symbol: 'NGN', name: 'Nigerian Naira' },
+            { code: 'CZK', symbol: 'Kc',  name: 'Czech Koruna' },
+            { code: 'RON', symbol: 'lei', name: 'Romanian Leu' },
+            { code: 'ILS', symbol: 'ILS', name: 'Israeli Shekel' },
+            { code: 'CLP', symbol: 'CLP', name: 'Chilean Peso' },
+            { code: 'PEN', symbol: 'S/',  name: 'Peruvian Sol' },
+            { code: 'ARS', symbol: 'ARS', name: 'Argentine Peso' },
+        ];
+
+        function formatPrice(amount, currencyCode) {
+            if (!amount || amount === 0) return '-';
+            const cur = CURRENCIES.find(c => c.code === currencyCode) || { symbol: currencyCode || '' };
+            const formatted = Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            const symbolAfter = ['HUF', 'SEK', 'NOK', 'DKK', 'CZK'];
+            if (symbolAfter.includes(cur.code)) return `${formatted} ${cur.symbol}`;
+            return `${cur.symbol}${formatted}`;
+        }
+
+        // ==================== LANGUAGES ====================
+        const LANGUAGES = {
+            en: { name: 'English', flag: '🇬🇧',
+                appSubtitle: 'Your Personal Library Management System',
+                appDesc: 'A personal offline library manager to track your reading list, organise books by status, and keep your collection backed up — all stored locally in your browser.',
+                export: '↓ Export', import: '↑ Import',
+                addManually: '+ Add Manually',
+                search: 'Search', searching: 'Searching…', searchPlaceholder: 'Search for a book or author…',
+                toRead: 'To Read', reading: 'Reading', finished: 'Finished', all: 'ALL',
+                pages: 'Pages', released: 'Released', price: 'Price',
+                editBook: 'Edit Book', addBook: 'Add Book Manually',
+                bookTitle: 'Book Title', author: 'Author', series: 'Series Name',
+                year: 'Year Published', ownership: 'Do you own this book?',
+                physical: '📖 Physical', virtual: '💻 Virtual', notOwned: '✕ Not owned',
+                saveChanges: 'Save Changes', addToLibrary: 'Add to Library', cancel: 'Cancel',
+                optional: '(optional)',
+                priceCurrency: 'Price', currency: 'Currency',
+                settingsTitle: 'Settings', save: 'Save',
+                language: 'Language', bgColor: 'Background Theme',
+                apiKeyLabel: 'Google Gemini API Key (Optional)',
+                apiKeyNote: 'The app uses Open Library for book data. The API key is optional.',
+                emptyLibrary: 'Your library is empty. Search for a book to get started!',
+                emptyStatus: 'No books in {status} status.',
+                deleteConfirm: 'Are you sure you want to delete this book?',
+            },
+            es: { name: 'Español', flag: '🇪🇸',
+                appSubtitle: 'Sistema de Gestión de Biblioteca',
+                appDesc: 'Un gestor de biblioteca personal para seguir tu lista de lectura, organizar libros por estado y mantener tu colección respaldada — todo almacenado localmente.',
+                export: '↓ Exportar', import: '↑ Importar',
+                addManually: '+ Añadir Manualmente',
+                search: 'Buscar', searching: 'Buscando…', searchPlaceholder: 'Busca un libro o autor…',
+                toRead: 'Por Leer', reading: 'Leyendo', finished: 'Terminado', all: 'TODO',
+                pages: 'Páginas', released: 'Publicado', price: 'Precio',
+                editBook: 'Editar Libro', addBook: 'Añadir Libro Manualmente',
+                bookTitle: 'Título del Libro', author: 'Autor', series: 'Nombre de Serie',
+                year: 'Año de Publicación', ownership: '¿Tienes este libro?',
+                physical: '📖 Físico', virtual: '💻 Virtual', notOwned: '✕ No tengo',
+                saveChanges: 'Guardar Cambios', addToLibrary: 'Añadir a Biblioteca', cancel: 'Cancelar',
+                optional: '(opcional)',
+                priceCurrency: 'Precio', currency: 'Moneda',
+                settingsTitle: 'Configuración', save: 'Guardar',
+                language: 'Idioma', bgColor: 'Tema de Fondo',
+                apiKeyLabel: 'Clave API de Google Gemini (Opcional)',
+                apiKeyNote: 'La app usa Open Library. La clave API es opcional.',
+                emptyLibrary: '¡Tu biblioteca está vacía. Busca un libro para empezar!',
+                emptyStatus: 'No hay libros en estado {status}.',
+                deleteConfirm: '¿Seguro que quieres eliminar este libro?',
+            },
+            fr: { name: 'Français', flag: '🇫🇷',
+                appSubtitle: 'Système de Gestion de Bibliothèque',
+                appDesc: 'Un gestionnaire de bibliothèque personnel pour suivre vos lectures, organiser vos livres par statut et sauvegarder votre collection — tout stocké localement.',
+                export: '↓ Exporter', import: '↑ Importer',
+                addManually: '+ Ajouter Manuellement',
+                search: 'Rechercher', searching: 'Recherche…', searchPlaceholder: 'Chercher un livre ou un auteur…',
+                toRead: 'À Lire', reading: 'En cours', finished: 'Terminé', all: 'TOUT',
+                pages: 'Pages', released: 'Publié', price: 'Prix',
+                editBook: 'Modifier le Livre', addBook: 'Ajouter un Livre Manuellement',
+                bookTitle: 'Titre du Livre', author: 'Auteur', series: 'Nom de Série',
+                year: 'Année de Publication', ownership: 'Possédez-vous ce livre ?',
+                physical: '📖 Physique', virtual: '💻 Numérique', notOwned: '✕ Non possédé',
+                saveChanges: 'Enregistrer', addToLibrary: 'Ajouter à la Bibliothèque', cancel: 'Annuler',
+                optional: '(optionnel)',
+                priceCurrency: 'Prix', currency: 'Devise',
+                settingsTitle: 'Paramètres', save: 'Enregistrer',
+                language: 'Langue', bgColor: 'Thème de Fond',
+                apiKeyLabel: 'Clé API Google Gemini (Optionnel)',
+                apiKeyNote: "L'app utilise Open Library. La clé API est optionnelle.",
+                emptyLibrary: 'Votre bibliothèque est vide. Cherchez un livre pour commencer !',
+                emptyStatus: 'Aucun livre avec le statut {status}.',
+                deleteConfirm: 'Voulez-vous vraiment supprimer ce livre ?',
+            },
+            de: { name: 'Deutsch', flag: '🇩🇪',
+                appSubtitle: 'Bibliotheksverwaltungssystem',
+                appDesc: 'Ein persönlicher Offline-Bibliotheksmanager zur Verwaltung deiner Leseliste, Sortierung nach Status und lokaler Datensicherung.',
+                export: '↓ Exportieren', import: '↑ Importieren',
+                addManually: '+ Manuell Hinzufügen',
+                search: 'Suchen', searching: 'Suche…', searchPlaceholder: 'Buch oder Autor suchen…',
+                toRead: 'Zu Lesen', reading: 'Wird Gelesen', finished: 'Fertig', all: 'ALLE',
+                pages: 'Seiten', released: 'Erschienen', price: 'Preis',
+                editBook: 'Buch Bearbeiten', addBook: 'Buch Manuell Hinzufügen',
+                bookTitle: 'Buchtitel', author: 'Autor', series: 'Serienname',
+                year: 'Erscheinungsjahr', ownership: 'Besitzt du dieses Buch?',
+                physical: '📖 Physisch', virtual: '💻 Digital', notOwned: '✕ Nicht besessen',
+                saveChanges: 'Änderungen Speichern', addToLibrary: 'Zur Bibliothek Hinzufügen', cancel: 'Abbrechen',
+                optional: '(optional)',
+                priceCurrency: 'Preis', currency: 'Währung',
+                settingsTitle: 'Einstellungen', save: 'Speichern',
+                language: 'Sprache', bgColor: 'Hintergrundthema',
+                apiKeyLabel: 'Google Gemini API-Schlüssel (Optional)',
+                apiKeyNote: 'Die App verwendet Open Library. Der API-Schlüssel ist optional.',
+                emptyLibrary: 'Deine Bibliothek ist leer. Suche nach einem Buch!',
+                emptyStatus: 'Keine Bücher mit Status {status}.',
+                deleteConfirm: 'Bist du sicher, dass du dieses Buch löschen möchtest?',
+            },
+            pt: { name: 'Português', flag: '🇵🇹',
+                appSubtitle: 'Sistema de Gestão de Biblioteca',
+                appDesc: 'Um gerenciador de biblioteca pessoal para acompanhar sua lista de leitura, organizar livros por status e manter seu acervo salvo — tudo localmente.',
+                export: '↓ Exportar', import: '↑ Importar',
+                addManually: '+ Adicionar Manualmente',
+                search: 'Pesquisar', searching: 'Pesquisando…', searchPlaceholder: 'Pesquisar livro ou autor…',
+                toRead: 'Para Ler', reading: 'Lendo', finished: 'Concluído', all: 'TUDO',
+                pages: 'Páginas', released: 'Publicado', price: 'Preço',
+                editBook: 'Editar Livro', addBook: 'Adicionar Livro Manualmente',
+                bookTitle: 'Título do Livro', author: 'Autor', series: 'Nome da Série',
+                year: 'Ano de Publicação', ownership: 'Você possui este livro?',
+                physical: '📖 Físico', virtual: '💻 Virtual', notOwned: '✕ Não possuo',
+                saveChanges: 'Salvar Alterações', addToLibrary: 'Adicionar à Biblioteca', cancel: 'Cancelar',
+                optional: '(opcional)',
+                priceCurrency: 'Preço', currency: 'Moeda',
+                settingsTitle: 'Configurações', save: 'Salvar',
+                language: 'Idioma', bgColor: 'Tema de Fundo',
+                apiKeyLabel: 'Chave de API do Google Gemini (Opcional)',
+                apiKeyNote: 'O app usa Open Library. A chave API é opcional.',
+                emptyLibrary: 'Sua biblioteca está vazia. Pesquise um livro para começar!',
+                emptyStatus: 'Nenhum livro com status {status}.',
+                deleteConfirm: 'Tem certeza que deseja excluir este livro?',
+            },
+            hu: { name: 'Magyar', flag: '🇭🇺',
+                appSubtitle: 'Könyvtárkezelő Rendszer',
+                appDesc: 'Személyes offline könyvtárkezelő az olvasási lista nyomon követéséhez, a könyvek státusz szerinti rendezéséhez és a gyűjtemény helyi mentéséhez.',
+                export: '↓ Exportálás', import: '↑ Importálás',
+                addManually: '+ Manuális Hozzáadás',
+                search: 'Keresés', searching: 'Keresés…', searchPlaceholder: 'Könyv vagy szerző keresése…',
+                toRead: 'Olvasandó', reading: 'Olvasás alatt', finished: 'Elolvasva', all: 'ÖSSZES',
+                pages: 'Oldalak', released: 'Megjelent', price: 'Ár',
+                editBook: 'Könyv Szerkesztése', addBook: 'Könyv Manuális Hozzáadása',
+                bookTitle: 'Könyv Címe', author: 'Szerző', series: 'Sorozat Neve',
+                year: 'Kiadás Éve', ownership: 'Megvan ez a könyved?',
+                physical: '📖 Fizikai', virtual: '💻 Digitális', notOwned: '✕ Nincs meg',
+                saveChanges: 'Változások Mentése', addToLibrary: 'Hozzáadás a Könyvtárhoz', cancel: 'Mégse',
+                optional: '(opcionális)',
+                priceCurrency: 'Ár', currency: 'Valuta',
+                settingsTitle: 'Beállítások', save: 'Mentés',
+                language: 'Nyelv', bgColor: 'Háttér Téma',
+                apiKeyLabel: 'Google Gemini API Kulcs (Opcionális)',
+                apiKeyNote: 'Az alkalmazás az Open Library-t használja. Az API kulcs opcionális.',
+                emptyLibrary: 'A könyvtárad üres. Keress egy könyvet a kezdéshez!',
+                emptyStatus: 'Nincs könyv {status} státuszban.',
+                deleteConfirm: 'Biztosan törölni akarod ezt a könyvet?',
+            },
+        };
+
+        // ==================== BACKGROUND THEMES ====================
+        const BG_THEMES = [
+            { id: 'default', label: 'Purple', bg: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', accent: '#8b5cf6' },
+            { id: 'red',     label: 'Red',    bg: 'linear-gradient(135deg, #1a0000, #3d0000, #1a0000)', accent: '#ef4444' },
+            { id: 'orange',  label: 'Orange', bg: 'linear-gradient(135deg, #1a0a00, #3d2000, #1a0a00)', accent: '#f97316' },
+            { id: 'yellow',  label: 'Yellow', bg: 'linear-gradient(135deg, #1a1500, #3d3400, #1a1500)', accent: '#eab308' },
+            { id: 'green',   label: 'Green',  bg: 'linear-gradient(135deg, #001a08, #003d14, #001a08)', accent: '#22c55e' },
+            { id: 'teal',    label: 'Teal',   bg: 'linear-gradient(135deg, #001a18, #003d36, #001a18)', accent: '#14b8a6' },
+            { id: 'pink',    label: 'Pink',   bg: 'linear-gradient(135deg, #1a0010, #3d0028, #1a0010)', accent: '#ec4899' },
+            { id: 'gray',    label: 'Gray',   bg: 'linear-gradient(135deg, #0a0a0a, #1e1e1e, #0a0a0a)', accent: '#94a3b8' },
+            { id: 'black',   label: 'Black',  bg: 'linear-gradient(135deg, #000000, #0d0d0d, #000000)', accent: '#6b7280' },
+            { id: 'white',   label: 'Light',  bg: 'linear-gradient(135deg, #f0f0ff, #e8e8f5, #f0f0ff)', accent: '#6d28d9' },
+        ];
+
+        // ==================== INDEXEDDB WRAPPER ====================
+        class LibraryDB {
+            constructor() {
+                this.dbName = 'PersonalLibraryDB';
+                this.version = 1;
+                this.db = null;
+            }
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve(this.db);
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('books')) {
+                            const objectStore = db.createObjectStore('books', { keyPath: 'id' });
+                            objectStore.createIndex('status', 'status', { unique: false });
+                            objectStore.createIndex('dateAdded', 'dateAdded', { unique: false });
+                        }
+                    };
+                });
+            }
+
+            async addBook(book) {
+                const transaction = this.db.transaction(['books'], 'readwrite');
+                const objectStore = transaction.objectStore('books');
+                const request = objectStore.add(book);
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getAllBooks() {
+                const transaction = this.db.transaction(['books'], 'readonly');
+                const objectStore = transaction.objectStore('books');
+                const request = objectStore.getAll();
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async updateBook(id, updates) {
+                const transaction = this.db.transaction(['books'], 'readwrite');
+                const objectStore = transaction.objectStore('books');
+                const getRequest = objectStore.get(id);
+                
+                return new Promise((resolve, reject) => {
+                    getRequest.onsuccess = () => {
+                        const book = getRequest.result;
+                        const updatedBook = { ...book, ...updates };
+                        const updateRequest = objectStore.put(updatedBook);
+                        
+                        updateRequest.onsuccess = () => resolve(updatedBook);
+                        updateRequest.onerror = () => reject(updateRequest.error);
+                    };
+                    getRequest.onerror = () => reject(getRequest.error);
+                });
+            }
+
+            async deleteBook(id) {
+                const transaction = this.db.transaction(['books'], 'readwrite');
+                const objectStore = transaction.objectStore('books');
+                const request = objectStore.delete(id);
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async clearAllBooks() {
+                const transaction = this.db.transaction(['books'], 'readwrite');
+                const objectStore = transaction.objectStore('books');
+                const request = objectStore.clear();
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        }
+
+        const db = new LibraryDB();
+
+        // ==================== OPEN LIBRARY API INTEGRATION ====================
+
+        // ==================== OPEN LIBRARY API INTEGRATION ====================
+        async function searchBooksFromOpenLibrary(query) {
+            const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`);
+            
+            if (!response.ok) {
+                throw new Error('Open Library API request failed');
+            }
+
+            const data = await response.json();
+            
+            return data.docs.map(book => ({
+                title: book.title,
+                author: book.author_name ? book.author_name[0] : 'Unknown Author',
+                pages: book.number_of_pages_median || book.numPages || 0,
+                seriesName: book.series ? book.series[0] : null,
+                isbn: book.isbn ? book.isbn[0] : null,
+                coverUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
+                publishYear: book.first_publish_year,
+                source: 'Open Library'
+            }));
+        }
+
+        // ==================== GOOGLE BOOKS API INTEGRATION ====================
+        async function searchBooksFromGoogleBooks(query) {
+            try {
+                const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10&printType=books`);
+                
+                if (!response.ok) {
+                    throw new Error('Google Books API request failed');
+                }
+
+                const data = await response.json();
+                
+                if (!data.items) {
+                    return [];
+                }
+                
+                return data.items.map(item => {
+                    const book = item.volumeInfo;
+                    const saleInfo = item.saleInfo;
+                    
+                    // Extract price information if available
+                    let priceUSD = null, priceHUF = null, priceINR = null;
+                    
+                    if (saleInfo && saleInfo.listPrice) {
+                        const currency = saleInfo.listPrice.currencyCode;
+                        const amount = saleInfo.listPrice.amount;
+                        
+                        if (currency === 'USD') {
+                            priceUSD = amount;
+                            priceHUF = parseFloat((amount * 360).toFixed(2));
+                            priceINR = parseFloat((amount * 83).toFixed(2));
+                        } else if (currency === 'HUF') {
+                            priceHUF = amount;
+                            priceUSD = amount / 360;
+                            priceINR = parseFloat(((amount / 360) * 83).toFixed(2));
+                        } else if (currency === 'INR') {
+                            priceINR = amount;
+                            priceUSD = amount / 83;
+                            priceHUF = parseFloat(((amount / 83) * 360).toFixed(2));
+                        }
+                    }
+                    
+                    return {
+                        title: book.title,
+                        author: book.authors ? book.authors[0] : 'Unknown Author',
+                        pages: book.pageCount || 0,
+                        seriesName: null, // Google Books doesn't provide series info directly
+                        isbn: book.industryIdentifiers ? book.industryIdentifiers[0].identifier : null,
+                        coverUrl: book.imageLinks ? book.imageLinks.thumbnail : null,
+                        publishYear: book.publishedDate ? parseInt(book.publishedDate.split('-')[0]) : null,
+                        priceUSD,
+                        priceHUF,
+                        priceINR,
+                        buyLink: saleInfo && saleInfo.buyLink ? saleInfo.buyLink : null,
+                        source: 'Google Books'
+                    };
+                });
+            } catch (error) {
+                console.error('Google Books API error:', error);
+                return [];
+            }
+        }
+
+        // ==================== COMBINED BOOK SEARCH ====================
+        async function searchMultipleSources(query) {
+            try {
+                // Search both APIs in parallel
+                const [openLibraryResults, googleBooksResults] = await Promise.all([
+                    searchBooksFromOpenLibrary(query).catch(() => []),
+                    searchBooksFromGoogleBooks(query).catch(() => [])
+                ]);
+                
+                // Combine results, prioritizing Google Books for price data
+                const allResults = [];
+                
+                // Add Google Books results first (they have price data)
+                allResults.push(...googleBooksResults);
+                
+                // Add Open Library results that aren't duplicates
+                for (const olBook of openLibraryResults) {
+                    const isDuplicate = allResults.some(existing => 
+                        existing.title.toLowerCase() === olBook.title.toLowerCase() &&
+                        existing.author.toLowerCase() === olBook.author.toLowerCase()
+                    );
+                    
+                    if (!isDuplicate) {
+                        allResults.push(olBook);
+                    }
+                }
+                
+                return allResults.slice(0, 10); // Return top 10 results
+            } catch (error) {
+                console.error('Multi-source search error:', error);
+                return [];
+            }
+        }
+
+        async function getBookDetailsFromOpenLibrary(isbn) {
+            if (!isbn) return null;
+            
+            try {
+                const response = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+                const data = await response.json();
+                const bookData = data[`ISBN:${isbn}`];
+                
+                if (!bookData) return null;
+                
+                return {
+                    title: bookData.title,
+                    author: bookData.authors ? bookData.authors[0].name : 'Unknown Author',
+                    pages: bookData.number_of_pages || 0,
+                    coverUrl: bookData.cover ? bookData.cover.medium : null,
+                    publishYear: bookData.publish_date
+                };
+            } catch (error) {
+                console.error('Error fetching book details:', error);
+                return null;
+            }
+        }
+
+        // Price conversion rates (for when we only have one currency)
+        const USD_TO_HUF = 360;
+        const USD_TO_INR = 83;
+
+        function convertPrices(priceUSD, priceHUF, priceINR) {
+            // If we have all prices, return them
+            if (priceHUF && priceINR) {
+                return { priceUSD, priceHUF, priceINR };
+            }
+            
+            // If we have USD, calculate others
+            if (priceUSD) {
+                return {
+                    priceUSD,
+                    priceHUF: priceHUF || parseFloat((priceUSD * USD_TO_HUF).toFixed(2)),
+                    priceINR: priceINR || parseFloat((priceUSD * USD_TO_INR).toFixed(2))
+                };
+            }
+            
+            // If we have HUF, calculate others
+            if (priceHUF) {
+                const usd = priceHUF / USD_TO_HUF;
+                return {
+                    priceUSD: usd,
+                    priceHUF,
+                    priceINR: priceINR || parseFloat((usd * USD_TO_INR).toFixed(2))
+                };
+            }
+            
+            // If we have INR, calculate others
+            if (priceINR) {
+                const usd = priceINR / USD_TO_INR;
+                return {
+                    priceUSD: usd,
+                    priceHUF: priceHUF || parseFloat((usd * USD_TO_HUF).toFixed(2)),
+                    priceINR
+                };
+            }
+            
+            // No price data available
+            return { priceUSD: null, priceHUF: null, priceINR: null };
+        }
+
+        // ==================== AI API INTEGRATION (FALLBACK) ====================
+        async function searchBookWithAI(query, apiKey) {
+            const SYSTEM_PROMPT = `You are a book metadata API. When given a book title, author name, or description, respond with ONLY a valid JSON object in this exact format:
+
+{
+  "title": "exact book title",
+  "author": "author name",
+  "pages": number,
+  "seriesName": "series name or null",
+  "price": number
+}
+
+Rules:
+- Return ONLY the JSON object, no other text
+- Use null for seriesName if not part of a series
+- Estimate current market price in USD for a new copy
+- If uncertain about a field, make your best estimate
+- pages must be a number
+- price must be a number (no currency symbols)`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `${SYSTEM_PROMPT}\n\nUser query: ${query}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.2,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 1024,
+                    },
+                    safetySettings: [
+                        {
+                            category: "HARM_CATEGORY_HARASSMENT",
+                            threshold: "BLOCK_NONE"
+                        },
+                        {
+                            category: "HARM_CATEGORY_HATE_SPEECH",
+                            threshold: "BLOCK_NONE"
+                        },
+                        {
+                            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            threshold: "BLOCK_NONE"
+                        },
+                        {
+                            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                            threshold: "BLOCK_NONE"
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('API Error:', errorData);
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            // Check if response has expected structure
+            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+                console.error('Unexpected API response structure:', data);
+                throw new Error('Invalid API response structure');
+            }
+            
+            const text = data.candidates[0].content.parts[0].text;
+            
+            // Extract JSON from response (in case there's extra text)
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                console.error('No JSON found in response:', text);
+                throw new Error('No valid JSON found in response');
+            }
+            
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        // ==================== HYBRID SEARCH (Multiple APIs + AI Enhancement) ====================
+        async function hybridBookSearch(query, apiKey) {
+            try {
+                // Search multiple book APIs
+                const results = await searchMultipleSources(query);
+                
+                if (results.length > 0) {
+                    // Return the first result with real price data or null prices
+                    const topResult = results[0];
+                    
+                    // Convert prices if we have any
+                    const prices = convertPrices(
+                        topResult.priceUSD,
+                        topResult.priceHUF,
+                        topResult.priceINR
+                    );
+                    
+                    return {
+                        title: topResult.title,
+                        author: topResult.author,
+                        pages: topResult.pages || 0,
+                        seriesName: topResult.seriesName,
+                        publishYear: topResult.publishYear || null,
+                        priceUSD: prices.priceUSD,
+                        priceHUF: prices.priceHUF,
+                        priceINR: prices.priceINR,
+                        source: topResult.source
+                    };
+                }
+                
+                // If no results from APIs, fall back to AI
+                if (apiKey) {
+                    const aiResult = await searchBookWithAI(query, apiKey);
+                    // AI won't have real prices, so return null
+                    return {
+                        ...aiResult,
+                        priceUSD: null,
+                        priceHUF: null,
+                        priceINR: null,
+                        source: 'AI'
+                    };
+                }
+                
+                throw new Error('No results found');
+            } catch (error) {
+                console.error('Hybrid search error:', error);
+                throw error;
+            }
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function csvEscape(val) {
+            const str = (val === null || val === undefined) ? '' : String(val);
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+
+        function exportToCSV(books) {
+            const headers = ['Title', 'Author', 'Pages', 'Series', 'Year Published', 'Ownership', 'Price', 'Currency', 'Status', 'Date Added'];
+            const rows = books.map(book => [
+                book.title || '',
+                book.author || '',
+                book.pages || '',
+                book.seriesName || '',
+                book.publishYear || '',
+                book.ownership || 'none',
+                book.price || book.priceHUF || book.priceINR || '',
+                book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : ''),
+                book.status || '',
+                new Date(book.dateAdded).toLocaleDateString()
+            ]);
+
+            const csvContent = [
+                headers.map(csvEscape).join(','),
+                ...rows.map(row => row.map(csvEscape).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().split('T')[0];
+            link.setAttribute('href', url);
+            link.setAttribute('download', `eszti_library_backup_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==================== GOOGLE SHEETS RELAY SYNC ====================
+        const RELAY_SHEET_NAME = 'Eszti_Library';
+
+        async function pushToRelay(relayUrl, books) {
+            const headers = ['Title', 'Author', 'Pages', 'Series', 'Year Published', 'Ownership', 'Price', 'Currency', 'Status', 'Date Added', 'ID'];
+            const rows = books.map(book => [
+                book.title || '',
+                book.author || '',
+                book.pages || 0,
+                book.seriesName || '',
+                book.publishYear || '',
+                book.ownership || 'none',
+                book.price || book.priceHUF || book.priceINR || 0,
+                book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'),
+                book.status || 'TO_READ',
+                book.dateAdded || new Date().toISOString(),
+                book.id || ''
+            ]);
+
+            const response = await fetch(relayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' }, // avoids CORS preflight
+                body: JSON.stringify({
+                    action: 'write',
+                    tab: RELAY_SHEET_NAME,
+                    values: [headers, ...rows]
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            return data.written - 1; // minus header row
+        }
+
+        async function pullFromRelay(relayUrl) {
+            const response = await fetch(relayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    action: 'read',
+                    tab: RELAY_SHEET_NAME,
+                    range: 'A:K'
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            const rows = (data.values || []).filter(r => r.some(c => String(c).trim()));
+            if (rows.length < 2) return [];
+
+            const header = rows[0].map(h => String(h || '').trim().toLowerCase());
+            const col = (names) => { for (const n of names) { const i = header.indexOf(n); if (i !== -1) return i; } return -1; };
+
+            const iTitle      = col(['title']);
+            const iAuthor     = col(['author']);
+            const iPages      = col(['pages']);
+            const iSeries     = col(['series', 'series name']);
+            const iYear       = col(['year published', 'year']);
+            const iOwnership  = col(['ownership']);
+            const iPrice      = col(['price']);
+            const iCurrency   = col(['currency']);
+            const iStatus     = col(['status']);
+            const iDateAdded  = col(['date added']);
+            const iId         = col(['id']);
+
+            if (iTitle === -1 || iAuthor === -1) throw new Error('Sheet must have Title and Author columns.');
+
+            const get = (row, idx) => (idx !== -1 && row[idx] != null) ? String(row[idx]).trim() : '';
+            const validStatuses  = ['TO_READ', 'READING', 'FINISHED'];
+            const validOwnership = ['physical', 'virtual', 'none'];
+
+            return rows.slice(1).filter(r => get(r, iTitle) || get(r, iAuthor)).map(row => {
+                const statusRaw    = get(row, iStatus).toUpperCase();
+                const ownershipRaw = get(row, iOwnership).toLowerCase();
+                return {
+                    id: get(row, iId) || generateUUID(),
+                    title:       get(row, iTitle),
+                    author:      get(row, iAuthor),
+                    pages:       parseInt(get(row, iPages)) || 0,
+                    seriesName:  get(row, iSeries) || null,
+                    publishYear: parseInt(get(row, iYear)) || null,
+                    ownership:   validOwnership.includes(ownershipRaw) ? ownershipRaw : 'none',
+                    price:       parseFloat(get(row, iPrice)) || 0,
+                    currency:    get(row, iCurrency) || 'USD',
+                    priceHUF:    0,
+                    priceINR:    0,
+                    status:      validStatuses.includes(statusRaw) ? statusRaw : 'TO_READ',
+                    dateAdded:   get(row, iDateAdded) || new Date().toISOString()
+                };
+            });
+        }
+
+        async function importFromCSV(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const text = e.target.result;
+
+                        // RFC 4180-compliant CSV parser — handles quoted fields with commas/newlines inside
+                        function parseCSV(raw) {
+                            const result = [];
+                            let row = [], field = '', inQuotes = false, i = 0;
+                            while (i < raw.length) {
+                                const ch = raw[i];
+                                if (inQuotes) {
+                                    if (ch === '"') {
+                                        if (raw[i + 1] === '"') { field += '"'; i += 2; continue; } // escaped quote
+                                        inQuotes = false;
+                                    } else {
+                                        field += ch;
+                                    }
+                                } else {
+                                    if (ch === '"') { inQuotes = true; }
+                                    else if (ch === ',') { row.push(field); field = ''; }
+                                    else if (ch === '\n' || ch === '\r') {
+                                        if (ch === '\r' && raw[i + 1] === '\n') i++; // CRLF
+                                        row.push(field); field = '';
+                                        if (row.some(f => f !== '')) result.push(row);
+                                        row = [];
+                                    } else {
+                                        field += ch;
+                                    }
+                                }
+                                i++;
+                            }
+                            // flush last field/row
+                            row.push(field);
+                            if (row.some(f => f !== '')) result.push(row);
+                            return result;
+                        }
+
+                        const rows = parseCSV(text);
+                        if (rows.length < 2) { resolve([]); return; }
+
+                        // Detect columns from header row (case-insensitive, trimmed)
+                        const header = rows[0].map(h => h.trim().toLowerCase());
+                        const col = (names) => {
+                            for (const n of names) {
+                                const idx = header.indexOf(n);
+                                if (idx !== -1) return idx;
+                            }
+                            return -1;
+                        };
+
+                        const iTitle      = col(['title']);
+                        const iAuthor     = col(['author']);
+                        const iPages      = col(['pages']);
+                        const iSeries     = col(['series', 'series name', 'seriesname']);
+                        const iYear       = col(['year published', 'publish year', 'publishyear', 'year']);
+                        const iOwnership  = col(['ownership', 'owned', 'format']);
+                        const iPriceHUF   = col(['price huf', 'pricehuf', 'huf']);
+                        const iPriceINR   = col(['price inr', 'priceinr', 'inr']);
+                        const iStatus     = col(['status']);
+                        const iDateAdded  = col(['date added', 'dateadded', 'date']);
+
+                        if (iTitle === -1 || iAuthor === -1) {
+                            reject(new Error('CSV must have at least a "Title" and "Author" column in the header row.'));
+                            return;
+                        }
+
+                        const get = (row, idx) => (idx !== -1 && row[idx] !== undefined) ? row[idx].trim() : '';
+
+                        const books = [];
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            const title = get(row, iTitle);
+                            const author = get(row, iAuthor);
+                            if (!title && !author) continue; // skip blank rows
+
+                            const seriesRaw = get(row, iSeries);
+                            const statusRaw = get(row, iStatus).toUpperCase();
+                            const ownershipRaw = get(row, iOwnership).toLowerCase();
+                            const validStatuses = ['TO_READ', 'READING', 'FINISHED'];
+                            const validOwnership = ['physical', 'virtual', 'none'];
+
+                            books.push({
+                                id: generateUUID(),
+                                title,
+                                author,
+                                pages: parseInt(get(row, iPages)) || 0,
+                                seriesName: seriesRaw || null,
+                                publishYear: parseInt(get(row, iYear)) || null,
+                                ownership: validOwnership.includes(ownershipRaw) ? ownershipRaw : 'none',
+                                priceHUF: parseFloat(get(row, iPriceHUF)) || 0,
+                                priceINR: parseFloat(get(row, iPriceINR)) || 0,
+                                status: validStatuses.includes(statusRaw) ? statusRaw : 'TO_READ',
+                                dateAdded: get(row, iDateAdded) || new Date().toISOString()
+                            });
+                        }
+
+                        resolve(books);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+        }
+
+        // ==================== EXCEL / GOOGLE SHEETS IMPORT ====================
+        function normalizeRowsToBooks(rows) {
+            if (rows.length < 2) return [];
+            const header = rows[0].map(h => String(h || '').trim().toLowerCase());
+            const col = (names) => {
+                for (const n of names) {
+                    const idx = header.indexOf(n);
+                    if (idx !== -1) return idx;
+                }
+                return -1;
+            };
+            const iTitle      = col(['title']);
+            const iAuthor     = col(['author']);
+            const iPages      = col(['pages']);
+            const iSeries     = col(['series', 'series name', 'seriesname']);
+            const iYear       = col(['year published', 'publish year', 'publishyear', 'year']);
+            const iOwnership  = col(['ownership', 'owned', 'format']);
+            const iPriceHUF   = col(['price huf', 'pricehuf', 'huf']);
+            const iPriceINR   = col(['price inr', 'priceinr', 'inr']);
+            const iPrice      = col(['price']);
+            const iCurrency   = col(['currency']);
+            const iStatus     = col(['status']);
+            const iDateAdded  = col(['date added', 'dateadded', 'date']);
+
+            if (iTitle === -1 || iAuthor === -1) {
+                throw new Error('File must have at least a "Title" and "Author" column in the header row.');
+            }
+
+            const get = (row, idx) => (idx !== -1 && row[idx] !== undefined && row[idx] !== null) ? String(row[idx]).trim() : '';
+            const books = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const title = get(row, iTitle);
+                const author = get(row, iAuthor);
+                if (!title && !author) continue;
+                const statusRaw = get(row, iStatus).toUpperCase();
+                const ownershipRaw = get(row, iOwnership).toLowerCase();
+                const validStatuses = ['TO_READ', 'READING', 'FINISHED'];
+                const validOwnership = ['physical', 'virtual', 'none'];
+                books.push({
+                    id: generateUUID(),
+                    title,
+                    author,
+                    pages: parseInt(get(row, iPages)) || 0,
+                    seriesName: get(row, iSeries) || null,
+                    publishYear: parseInt(get(row, iYear)) || null,
+                    ownership: validOwnership.includes(ownershipRaw) ? ownershipRaw : 'none',
+                    price: parseFloat(get(row, iPrice)) || parseFloat(get(row, iPriceHUF)) || parseFloat(get(row, iPriceINR)) || 0,
+                    currency: get(row, iCurrency) || (iPriceHUF !== -1 && get(row, iPriceHUF) ? 'HUF' : iPriceINR !== -1 && get(row, iPriceINR) ? 'INR' : 'USD'),
+                    priceHUF: parseFloat(get(row, iPriceHUF)) || 0,
+                    priceINR: parseFloat(get(row, iPriceINR)) || 0,
+                    status: validStatuses.includes(statusRaw) ? statusRaw : 'TO_READ',
+                    dateAdded: get(row, iDateAdded) || new Date().toISOString()
+                });
+            }
+            return books;
+        }
+
+        async function importFromExcel(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        resolve(normalizeRowsToBooks(rows));
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function importFromGoogleSheetsUrl(url) {
+            // Convert Google Sheets URL to CSV export URL
+            let csvUrl = url;
+            const editMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+            if (editMatch) {
+                const id = editMatch[1];
+                // Extract gid if present
+                const gidMatch = url.match(/[#&?]gid=(\d+)/);
+                const gid = gidMatch ? gidMatch[1] : '0';
+                csvUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+            } else {
+                throw new Error('Please paste a valid Google Sheets URL (e.g. https://docs.google.com/spreadsheets/d/...)');
+            }
+
+            const response = await fetch(csvUrl);
+            if (!response.ok) {
+                throw new Error('Could not fetch the Google Sheet. Make sure the sheet is shared as "Anyone with the link can view".');
+            }
+            const text = await response.text();
+            // Re-use CSV parser from importFromCSV by wrapping in a File object
+            const blob = new Blob([text], { type: 'text/csv' });
+            const file = new File([blob], 'sheet.csv', { type: 'text/csv' });
+            return importFromCSV(file);
+        }
+
+        // Auto-backup functionality - saves to localStorage on changes
+        function autoBackup(books) {
+            try {
+                localStorage.setItem('eszti_library_auto_backup', JSON.stringify({
+                    books: books,
+                    timestamp: new Date().toISOString()
+                }));
+            } catch (error) {
+                console.error('Auto-backup failed:', error);
+            }
+        }
+
+        // ==================== COMPONENTS ====================
+        function ConfirmationModal({ book, onConfirm, onCancel }) {
+            return (
+                <div className="modal-overlay" onClick={onCancel}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold mb-4" style={{ color: '#8b5cf6' }}>Confirm Book Details</h2>
+                        <div className="space-y-3 mb-6">
+                            <div>
+                                <span className="text-gray-400 text-sm">Title:</span>
+                                <p className="text-lg font-semibold">{book.title}</p>
+                            </div>
+                            <div>
+                                <span className="text-gray-400 text-sm">Author:</span>
+                                <p>{book.author}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="text-gray-400 text-sm">Pages:</span>
+                                    <p>{book.pages > 0 ? book.pages : 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-sm">Price:</span>
+                                    <p>{formatPrice(book.price || book.priceHUF || book.priceINR, book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'))}</p>
+                                </div>
+                            </div>
+                            {book.seriesName && (
+                                <div>
+                                    <span className="text-gray-400 text-sm">Series:</span>
+                                    <p>{book.seriesName}</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={onConfirm} className="btn-primary flex-1">
+                                Add to Library
+                            </button>
+                            <button onClick={onCancel} className="btn-secondary flex-1">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ManualEntryModal({ onConfirm, onCancel }) {
+            const { t } = useContext(SettingsContext);
+            const [formData, setFormData] = useState({
+                title: '',
+                author: '',
+                pages: '',
+                seriesName: '',
+                publishYear: '',
+                ownership: 'none',
+                price: '',
+                currency: 'USD'
+            });
+            const [errors, setErrors] = useState({});
+
+            const handleChange = (field, value) => {
+                setFormData({ ...formData, [field]: value });
+                if (errors[field]) {
+                    setErrors({ ...errors, [field]: null });
+                }
+            };
+
+            const validateForm = () => {
+                const newErrors = {};
+                if (!formData.title.trim()) newErrors.title = 'Title is required';
+                if (!formData.author.trim()) newErrors.author = 'Author is required';
+                if (formData.pages && (isNaN(formData.pages) || parseInt(formData.pages) < 0)) newErrors.pages = 'Pages must be a positive number';
+                if (formData.publishYear && (isNaN(formData.publishYear) || parseInt(formData.publishYear) < 0 || parseInt(formData.publishYear) > new Date().getFullYear())) newErrors.publishYear = 'Enter a valid year (e.g. 1997)';
+                if (formData.price && (isNaN(formData.price) || parseFloat(formData.price) < 0)) newErrors.price = 'Price must be a positive number';
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!validateForm()) return;
+                const bookData = {
+                    title: formData.title.trim(),
+                    author: formData.author.trim(),
+                    pages: formData.pages ? parseInt(formData.pages) : 0,
+                    seriesName: formData.seriesName.trim() || null,
+                    publishYear: formData.publishYear ? parseInt(formData.publishYear) : null,
+                    ownership: formData.ownership || 'none',
+                    price: formData.price ? parseFloat(formData.price) : 0,
+                    currency: formData.currency || 'USD',
+                    // Keep legacy fields for backwards compat with CSV export
+                    priceHUF: formData.currency === 'HUF' ? parseFloat(formData.price) || 0 : 0,
+                    priceINR: formData.currency === 'INR' ? parseFloat(formData.price) || 0 : 0,
+                };
+                onConfirm(bookData);
+            };
+
+            return (
+                <div className="modal-overlay" onClick={onCancel}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h2 className="text-2xl font-bold mb-4" style={{ color: '#8b5cf6' }}>{t.addBook}</h2>
+                        <p className="text-sm text-gray-400 mb-6">
+                            {t.addBook === 'Add Book Manually' ? "Can't find your book? Add it manually with all the details you know." : t.addBook}
+                        </p>
+                        
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.bookTitle} <span style={{ color: '#f87171' }}>*</span></label>
+                                    <input type="text" value={formData.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="e.g., The Great Gatsby" className={errors.title ? 'border-red-400' : ''} />
+                                    {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.author} <span style={{ color: '#f87171' }}>*</span></label>
+                                    <input type="text" value={formData.author} onChange={(e) => handleChange('author', e.target.value)} placeholder="e.g., F. Scott Fitzgerald" className={errors.author ? 'border-red-400' : ''} />
+                                    {errors.author && <p className="text-red-400 text-xs mt-1">{errors.author}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.pages}</label>
+                                    <input type="number" value={formData.pages} onChange={(e) => handleChange('pages', e.target.value)} placeholder="e.g., 320" min="0" className={errors.pages ? 'border-red-400' : ''} />
+                                    {errors.pages && <p className="text-red-400 text-xs mt-1">{errors.pages}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.year} <span className="text-gray-500">{t.optional}</span></label>
+                                    <input type="number" value={formData.publishYear} onChange={(e) => handleChange('publishYear', e.target.value)} placeholder="e.g., 1997" min="0" max={new Date().getFullYear()} className={errors.publishYear ? 'border-red-400' : ''} />
+                                    {errors.publishYear && <p className="text-red-400 text-xs mt-1">{errors.publishYear}</p>}
+                                </div>
+
+                                {/* Price + Currency */}
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.priceCurrency} <span className="text-gray-500">{t.optional}</span></label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input
+                                            type="number" step="0.01" min="0"
+                                            value={formData.price}
+                                            onChange={(e) => handleChange('price', e.target.value)}
+                                            placeholder="0.00"
+                                            style={{ flex: 1 }}
+                                            className={errors.price ? 'border-red-400' : ''}
+                                        />
+                                        <select
+                                            value={formData.currency}
+                                            onChange={(e) => handleChange('currency', e.target.value)}
+                                            style={{ width: '160px', flexShrink: 0 }}
+                                        >
+                                            {CURRENCIES.map(c => (
+                                                <option key={c.code} value={c.code}>{c.code} – {c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.series} <span className="text-gray-500">{t.optional}</span></label>
+                                    <input type="text" value={formData.seriesName} onChange={(e) => handleChange('seriesName', e.target.value)} placeholder="e.g., The Lord of the Rings" />
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.ownership}</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {[
+                                            { val: 'physical', label: t.physical, color: '#a78bfa' },
+                                            { val: 'virtual', label: t.virtual, color: '#67e8f9' },
+                                            { val: 'none', label: t.notOwned, color: '#64748b' }
+                                        ].map(({ val, label, color }) => (
+                                            <button key={val} type="button" onClick={() => handleChange('ownership', val)} style={{
+                                                flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid',
+                                                borderColor: formData.ownership === val ? color : 'rgba(255,255,255,0.15)',
+                                                background: formData.ownership === val ? `${color}22` : 'rgba(255,255,255,0.05)',
+                                                color: formData.ownership === val ? color : '#64748b',
+                                                cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'DM Mono, monospace', transition: 'all 0.2s ease'
+                                            }}>{label}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="submit" className="btn-primary flex-1">{t.addToLibrary}</button>
+                                <button type="button" onClick={onCancel} className="btn-secondary flex-1">{t.cancel}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function EditBookModal({ book, onConfirm, onCancel }) {
+            const { t } = useContext(SettingsContext);
+            const [formData, setFormData] = useState({
+                title: book.title || '',
+                author: book.author || '',
+                pages: book.pages || '',
+                seriesName: book.seriesName || '',
+                publishYear: book.publishYear || '',
+                ownership: book.ownership || 'none',
+                price: book.price || (book.priceHUF || book.priceINR || ''),
+                currency: book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD')
+            });
+            const [errors, setErrors] = useState({});
+
+            const handleChange = (field, value) => {
+                setFormData({ ...formData, [field]: value });
+                if (errors[field]) setErrors({ ...errors, [field]: null });
+            };
+
+            const validateForm = () => {
+                const newErrors = {};
+                if (!formData.title.trim()) newErrors.title = 'Title is required';
+                if (!formData.author.trim()) newErrors.author = 'Author is required';
+                if (formData.pages && (isNaN(formData.pages) || parseInt(formData.pages) < 0)) newErrors.pages = 'Pages must be a positive number';
+                if (formData.publishYear && (isNaN(formData.publishYear) || parseInt(formData.publishYear) < 0 || parseInt(formData.publishYear) > new Date().getFullYear())) newErrors.publishYear = 'Enter a valid year';
+                if (formData.price && (isNaN(formData.price) || parseFloat(formData.price) < 0)) newErrors.price = 'Price must be a positive number';
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!validateForm()) return;
+                const updatedData = {
+                    title: formData.title.trim(),
+                    author: formData.author.trim(),
+                    pages: formData.pages ? parseInt(formData.pages) : 0,
+                    seriesName: formData.seriesName.trim() || null,
+                    publishYear: formData.publishYear ? parseInt(formData.publishYear) : null,
+                    ownership: formData.ownership || 'none',
+                    price: formData.price ? parseFloat(formData.price) : 0,
+                    currency: formData.currency || 'USD',
+                    priceHUF: formData.currency === 'HUF' ? parseFloat(formData.price) || 0 : 0,
+                    priceINR: formData.currency === 'INR' ? parseFloat(formData.price) || 0 : 0,
+                };
+                onConfirm(book.id, updatedData);
+            };
+
+            return (
+                <div className="modal-overlay" onClick={onCancel}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h2 className="text-2xl font-bold mb-4" style={{ color: '#8b5cf6' }}>{t.editBook}</h2>
+                        <p className="text-sm text-gray-400 mb-6">Update the book details below.</p>
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.bookTitle} <span style={{ color: '#f87171' }}>*</span></label>
+                                    <input type="text" value={formData.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="e.g., The Great Gatsby" className={errors.title ? 'border-red-400' : ''} />
+                                    {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.author} <span style={{ color: '#f87171' }}>*</span></label>
+                                    <input type="text" value={formData.author} onChange={(e) => handleChange('author', e.target.value)} placeholder="e.g., F. Scott Fitzgerald" className={errors.author ? 'border-red-400' : ''} />
+                                    {errors.author && <p className="text-red-400 text-xs mt-1">{errors.author}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.pages}</label>
+                                    <input type="number" value={formData.pages} onChange={(e) => handleChange('pages', e.target.value)} placeholder="e.g., 320" min="0" className={errors.pages ? 'border-red-400' : ''} />
+                                    {errors.pages && <p className="text-red-400 text-xs mt-1">{errors.pages}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.year} <span className="text-gray-500">{t.optional}</span></label>
+                                    <input type="number" value={formData.publishYear} onChange={(e) => handleChange('publishYear', e.target.value)} placeholder="e.g., 1997" min="0" max={new Date().getFullYear()} className={errors.publishYear ? 'border-red-400' : ''} />
+                                    {errors.publishYear && <p className="text-red-400 text-xs mt-1">{errors.publishYear}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.priceCurrency} <span className="text-gray-500">{t.optional}</span></label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input
+                                            type="number" step="0.01" min="0"
+                                            value={formData.price}
+                                            onChange={(e) => handleChange('price', e.target.value)}
+                                            placeholder="0.00"
+                                            style={{ flex: 1 }}
+                                            className={errors.price ? 'border-red-400' : ''}
+                                        />
+                                        <select
+                                            value={formData.currency}
+                                            onChange={(e) => handleChange('currency', e.target.value)}
+                                            style={{ width: '160px', flexShrink: 0 }}
+                                        >
+                                            {CURRENCIES.map(c => (
+                                                <option key={c.code} value={c.code}>{c.code} - {c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price}</p>}
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.series} <span className="text-gray-500">{t.optional}</span></label>
+                                    <input type="text" value={formData.seriesName} onChange={(e) => handleChange('seriesName', e.target.value)} placeholder="e.g., The Lord of the Rings" />
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-sm text-gray-300">{t.ownership}</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {[
+                                            { val: 'physical', label: t.physical, color: '#a78bfa' },
+                                            { val: 'virtual', label: t.virtual, color: '#67e8f9' },
+                                            { val: 'none', label: t.notOwned, color: '#64748b' }
+                                        ].map(({ val, label, color }) => (
+                                            <button key={val} type="button" onClick={() => handleChange('ownership', val)} style={{
+                                                flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid',
+                                                borderColor: formData.ownership === val ? color : 'rgba(255,255,255,0.15)',
+                                                background: formData.ownership === val ? `${color}22` : 'rgba(255,255,255,0.05)',
+                                                color: formData.ownership === val ? color : '#64748b',
+                                                cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'DM Mono, monospace', transition: 'all 0.2s ease'
+                                            }}>{label}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="submit" className="btn-primary flex-1">{t.saveChanges}</button>
+                                <button type="button" onClick={onCancel} className="btn-secondary flex-1">{t.cancel}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+
+        function HelpModal({ onClose }) {
+            const { bgTheme } = useContext(SettingsContext);
+            const isLight = bgTheme === 'white';
+
+            const clr = {
+                heading:    isLight ? '#5b21b6' : '#a78bfa',
+                subheading: isLight ? '#4c1d95' : '#a78bfa',
+                body:       isLight ? '#1e1b4b' : '#e8e6e3',
+                muted:      isLight ? '#4c1d95' : '#cbd5e1',
+                dim:        isLight ? '#5b21b6' : '#64748b',
+                close:      isLight ? '#4c1d95' : '#94a3b8',
+                accent:     isLight ? '#6d28d9' : '#a78bfa',
+                border:     isLight ? 'rgba(109,40,217,0.35)' : 'rgba(139,92,246,0.3)',
+                tipBg:      isLight ? 'rgba(109,40,217,0.08)' : 'rgba(139,92,246,0.08)',
+                tipBorder:  isLight ? 'rgba(109,40,217,0.25)' : 'rgba(139,92,246,0.25)',
+                bold:       isLight ? '#3b0764' : '#e8e6e3',
+                statusRed:  isLight ? '#9b1c1c' : '#fca5a5',
+                statusYel:  isLight ? '#78350f' : '#fde047',
+                statusGrn:  isLight ? '#14532d' : '#86efac',
+            };
+
+            const section = (icon, title, items) => (
+                <div style={{ marginBottom: '24px' }}>
+                    <h3 style={{ color: clr.subheading, fontWeight: 700, marginBottom: '12px', fontSize: '1rem', fontFamily: 'DM Mono, monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{icon}</span> {title}
+                    </h3>
+                    <ul style={{ listStyle: 'none', paddingLeft: '4px' }}>
+                        {items.map((item, i) => (
+                            <li key={i} style={{ marginBottom: '9px', paddingLeft: '14px', borderLeft: `2px solid ${clr.border}`, color: clr.muted, fontSize: '0.9rem', lineHeight: '1.65' }}>
+                                {item}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            );
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px', maxHeight: '85vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '26px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                <div style={{ 
+                                    fontSize: '1.4rem',
+                                    background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                                    borderRadius: '10px',
+                                    width: '44px',
+                                    height: '44px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>ℹ️</div>
+                                <div>
+                                    <h2 style={{ color: clr.heading, fontFamily: 'Crimson Pro, serif', fontSize: '1.5rem', fontWeight: 700 }}>How to Use</h2>
+                                    <p style={{ color: clr.dim, fontSize: '0.78rem', fontFamily: 'DM Mono, monospace', marginTop: '2px' }}>Eszti's Little Library — quick reference guide</p>
+                                </div>
+                            </div>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: clr.close, cursor: 'pointer', fontSize: '1.3rem' }}>✕</button>
+                        </div>
+
+                        <div style={{ color: clr.body, lineHeight: '1.7', fontSize: '0.95rem' }}>
+
+                            {section('📚', 'Adding Books', [
+                                <span><strong style={{color: clr.bold}}>Search bar:</strong> Type a title, author, or keyword (3+ characters). A live dropdown will suggest matches from Open Library and Google Books — click any result to add it instantly.</span>,
+                                <span><strong style={{color: clr.bold}}>Add Manually:</strong> Click <em>+ Add Manually</em> below the search bar to fill in your own details when a book isn't found in the search.</span>
+                            ])}
+
+                            {section('🏷️', 'Reading Status', [
+                                <span><strong style={{color: clr.statusRed}}>To Read</strong> — books you plan to read next.</span>,
+                                <span><strong style={{color: clr.statusYel}}>Reading</strong> — books you are currently reading.</span>,
+                                <span><strong style={{color: clr.statusGrn}}>Finished</strong> — books you have completed.</span>,
+                                <span style={{color: clr.muted}}>Use the status dropdown on each book card to change it, or use the tabs at the top to filter your library by status.</span>
+                            ])}
+
+                            {section('✏️', 'Editing & Deleting', [
+                                <span>Click the <strong style={{color: clr.bold}}>pencil icon</strong> on any book card to edit its details — title, author, series, pages, ownership, and price.</span>,
+                                <span>Click the <strong style={{color: clr.bold}}>trash icon</strong> to remove a book. You'll be asked to confirm before it's deleted.</span>
+                            ])}
+
+                            {section('🔍', 'Sorting & Searching', [
+                                <span>Use the <strong style={{color: clr.bold}}>sort controls</strong> (top-right of the book list) to order by Title, Author, Year, or Date Added — ascending or descending.</span>,
+                                <span>The <strong style={{color: clr.bold}}>filter bar</strong> lets you search within your library to quickly find a specific book.</span>,
+                                <span>Toggle between <strong style={{color: clr.bold}}>Grid</strong> and <strong style={{color: clr.bold}}>List</strong> view using the view mode buttons.</span>
+                            ])}
+
+                            {section('💾', 'Import & Export', [
+                                <span><strong style={{color: clr.bold}}>Export:</strong> Click <em>↓ Export</em> to download your full library as a CSV file for safekeeping.</span>,
+                                <span><strong style={{color: clr.bold}}>Import:</strong> Click <em>↑ Import</em> to restore or replace your library from a <em>.csv</em> or <em>.xlsx</em> file, or paste a Google Sheets URL. The imported file replaces your current library entirely.</span>,
+                                <span>Your import file must include at minimum a <strong style={{color: clr.accent}}>Title</strong> and <strong style={{color: clr.accent}}>Author</strong> column header.</span>
+                            ])}
+
+                            <div style={{ 
+                                background: clr.tipBg,
+                                border: `1px solid ${clr.tipBorder}`,
+                                borderRadius: '10px',
+                                padding: '16px 18px',
+                                fontSize: '0.85rem',
+                                color: clr.muted
+                            }}>
+                                <strong style={{ color: clr.accent }}>💡 Good to know:</strong> Your library is stored locally inside your browser's IndexedDB — nothing is sent to any server. Export your library regularly to avoid losing data if you clear your browser storage.
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '26px', textAlign: 'center' }}>
+                            <button onClick={onClose} className="btn-primary" style={{ minWidth: '150px' }}>
+                                Got it!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SeriesCard({ seriesName, books: rawBooks, onStatusChange, onDelete, onEdit, sortBy = 'title', sortDir = 'asc' }) {
+            const [expanded, setExpanded] = React.useState(false);
+
+            // Sort the books inside the dropdown by the active sort key
+            const books = rawBooks.slice().sort((a, b) => {
+                let cmp = 0;
+                if (sortBy === 'author') {
+                    cmp = (a.author || '').localeCompare(b.author || '');
+                } else if (sortBy === 'publishYear') {
+                    cmp = (a.publishYear || 0) - (b.publishYear || 0);
+                } else if (sortBy === 'dateAdded') {
+                    cmp = new Date(a.dateAdded || 0) - new Date(b.dateAdded || 0);
+                } else {
+                    // default: sort by title inside series
+                    cmp = (a.title || '').localeCompare(b.title || '');
+                }
+                return sortDir === 'asc' ? cmp : -cmp;
+            });
+
+            // Aggregate statuses for the series badge
+            const statusCounts = books.reduce((acc, b) => { acc[b.status] = (acc[b.status] || 0) + 1; return acc; }, {});
+            const dominantStatus = ['READING', 'FINISHED', 'TO_READ'].find(s => statusCounts[s]) || 'TO_READ';
+            const statusTextColor = { 'TO_READ': '#f87171', 'READING': '#fde047', 'FINISHED': '#86efac' };
+            const statusLabels = { 'TO_READ': 'TO READ', 'READING': 'READING', 'FINISHED': 'FINISHED' };
+            const ownershipLabel = { 'physical': '📖', 'virtual': '💻', 'none': '' };
+            const ownershipColor = { 'physical': '#a78bfa', 'virtual': '#67e8f9', 'none': 'transparent' };
+            const totalPages = books.reduce((s, b) => s + (b.pages || 0), 0);
+
+            return (
+                <div className="glass-card book-card fade-in" style={{ marginBottom: '12px', overflow: 'visible' }}>
+                    {/* Series header row */}
+                    <div
+                        onClick={() => setExpanded(!expanded)}
+                        style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', userSelect: 'none' }}
+                    >
+                        {/* Expand arrow */}
+                        <span style={{
+                            flexShrink: 0, width: '20px', textAlign: 'center',
+                            color: '#8b5cf6', fontSize: '0.85rem', transition: 'transform 0.2s ease',
+                            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block'
+                        }}>▶</span>
+
+                        {/* Series name + book count */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 className="text-lg font-bold" style={{ color: '#8b5cf6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                📚 {seriesName}
+                            </h3>
+                            <p className="text-gray-400 text-xs" style={{ fontFamily: 'DM Mono, monospace', marginTop: '2px' }}>
+                                {books.length} book{books.length !== 1 ? 's' : ''} · {books[0].author}
+                            </p>
+                        </div>
+
+                        {/* Total pages */}
+                        <div style={{ width: '80px', textAlign: 'center', flexShrink: 0 }}>
+                            <span className="text-gray-400 text-xs block">Pages</span>
+                            <span className="text-gray-200 text-sm">{totalPages > 0 ? totalPages.toLocaleString() : '-'}</span>
+                        </div>
+
+                        {/* Status summary */}
+                        <div style={{ width: '130px', textAlign: 'center', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                {Object.entries(statusCounts).map(([s, c]) => (
+                                    <span key={s} style={{ fontSize: '0.65rem', fontFamily: 'DM Mono, monospace', fontWeight: 700, color: statusTextColor[s], letterSpacing: '0.03em' }}>
+                                        {c} {statusLabels[s]}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Spacer to align with book action buttons */}
+                        <div style={{ width: '60px', flexShrink: 0 }}></div>
+                    </div>
+
+                    {/* Expanded book list */}
+                    {expanded && (
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            {books.map((book, idx) => (
+                                <div key={book.id} style={{
+                                    display: 'flex', gap: '16px', alignItems: 'center',
+                                    padding: '10px 16px 10px 48px',
+                                    borderBottom: idx < books.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                                    background: 'rgba(139, 92, 246, 0.04)'
+                                }}>
+                                    {/* Title */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <p className="text-sm font-semibold" style={{ color: '#e8e6e3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {book.title}
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: statusTextColor[book.status], fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em' }}>
+                                                {statusLabels[book.status]}
+                                            </span>
+                                            {book.ownership && book.ownership !== 'none' && (
+                                                <span style={{ fontSize: '0.65rem', color: ownershipColor[book.ownership], fontFamily: 'DM Mono, monospace' }}>
+                                                    · {ownershipLabel[book.ownership]}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Pages */}
+                                    <div style={{ width: '80px', textAlign: 'center', flexShrink: 0 }}>
+                                        <span className="text-gray-200 text-sm">{book.pages > 0 ? book.pages : '-'}</span>
+                                    </div>
+
+                                    {/* Year */}
+                                    <div style={{ width: '70px', textAlign: 'center', flexShrink: 0 }}>
+                                        <span className="text-gray-200 text-sm">{book.publishYear || '-'}</span>
+                                    </div>
+
+                                    {/* Price */}
+                                    <div style={{ width: '100px', textAlign: 'center', flexShrink: 0 }}>
+                                        <div className="text-gray-200 text-xs" style={{ lineHeight: '1.3' }}>
+                                            {formatPrice(book.price || book.priceHUF || book.priceINR, book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'))}
+                                        </div>
+                                    </div>
+
+                                    {/* Status dropdown */}
+                                    <div style={{ width: '140px', flexShrink: 0 }}>
+                                        <select
+                                            value={book.status}
+                                            onChange={(e) => onStatusChange(book.id, e.target.value)}
+                                            className="text-xs px-2 py-1"
+                                            style={{ width: '100%' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <option value="TO_READ">To Read</option>
+                                            <option value="READING">Reading</option>
+                                            <option value="FINISHED">Finished</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(book); }} className="text-gray-400 hover:text-violet-400 transition-colors" title="Edit book">
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(book.id); }} className="text-gray-400 hover:text-red-400 transition-colors" title="Delete book">
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function BookCard({ book, onStatusChange, onDelete, onEdit, viewMode = 'grid' }) {
+            const statusColors = { 'TO_READ': 'status-to-read', 'READING': 'status-reading', 'FINISHED': 'status-finished' };
+            const statusLabels = { 'TO_READ': 'TO READ', 'READING': 'READING', 'FINISHED': 'FINISHED' };
+            const statusTextColor = { 'TO_READ': '#f87171', 'READING': '#fde047', 'FINISHED': '#86efac' };
+            const ownershipLabel = { 'physical': '📖 Physical', 'virtual': '💻 Virtual', 'none': null };
+            const ownershipColor = { 'physical': '#a78bfa', 'virtual': '#67e8f9', 'none': null };
+
+            if (viewMode === 'list') {
+                return (
+                    <div className="glass-card book-card p-4 fade-in" style={{ marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            {/* Title and Author Column */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <h3 className="text-lg font-bold mb-1" style={{ color: '#8b5cf6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {book.title}
+                                </h3>
+                                <p className="text-gray-300 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {book.seriesName && <><span style={{ opacity: 0.7 }}>{book.seriesName}</span> | </>}
+                                    {book.author}
+                                </p>
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: statusTextColor[book.status], fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em' }}>
+                                        {statusLabels[book.status]}
+                                    </span>
+                                    {ownershipLabel[book.ownership || 'none'] && (
+                                        <span style={{ fontSize: '0.68rem', color: ownershipColor[book.ownership], fontFamily: 'DM Mono, monospace', opacity: 0.85 }}>
+                                            · {ownershipLabel[book.ownership]}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pages Column */}
+                            <div style={{ width: '80px', textAlign: 'center', flexShrink: 0 }}>
+                                <span className="text-gray-400 text-xs block">Pages</span>
+                                <span className="text-gray-200 text-sm">{book.pages > 0 ? book.pages : '-'}</span>
+                            </div>
+
+                            {/* Year Column */}
+                            <div style={{ width: '70px', textAlign: 'center', flexShrink: 0 }}>
+                                <span className="text-gray-400 text-xs block">Released</span>
+                                <span className="text-gray-200 text-sm">{book.publishYear || '-'}</span>
+                            </div>
+
+                            {/* Price Column */}
+                            <div style={{ width: '100px', textAlign: 'center', flexShrink: 0 }}>
+                                <span className="text-gray-400 text-xs block">Price</span>
+                                <div className="text-gray-200 text-xs" style={{ lineHeight: '1.3' }}>
+                                    {formatPrice(book.price || book.priceHUF || book.priceINR, book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'))}
+                                </div>
+                            </div>
+
+                            {/* Status Column */}
+                            <div style={{ width: '140px', flexShrink: 0 }}>
+                                <select value={book.status} onChange={(e) => onStatusChange(book.id, e.target.value)} className="text-xs px-2 py-1" style={{ width: '100%' }}>
+                                    <option value="TO_READ">To Read</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="FINISHED">Finished</option>
+                                </select>
+                            </div>
+
+                            {/* Actions Column */}
+                            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                <button onClick={() => onEdit(book)} className="text-gray-400 hover:text-violet-400 transition-colors" title="Edit book">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </button>
+                                <button onClick={() => onDelete(book.id)} className="text-gray-400 hover:text-red-400 transition-colors" title="Delete book">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Grid view
+            return (
+                <div className="glass-card book-card p-6 fade-in">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                            <h3 className="text-xl font-bold mb-1" style={{ color: '#8b5cf6' }}>{book.title}</h3>
+                            <p className="text-gray-300 mb-1" style={{ fontSize: '0.95rem' }}>
+                                {book.seriesName && <><span style={{ opacity: 0.7 }}>{book.seriesName}</span> | </>}
+                                {book.author}
+                            </p>
+                            {ownershipLabel[book.ownership || 'none'] && (
+                                <span style={{ fontSize: '0.72rem', fontFamily: 'DM Mono, monospace', color: ownershipColor[book.ownership], opacity: 0.9 }}>
+                                    {ownershipLabel[book.ownership]}
+                                </span>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => onEdit(book)} className="text-gray-400 hover:text-violet-400 transition-colors" title="Edit book">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <button onClick={() => onDelete(book.id)} className="text-gray-400 hover:text-red-400 transition-colors" title="Delete book">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                        <div>
+                            <span className="text-gray-400">Pages:</span>
+                            <span className="ml-2 text-gray-200">{book.pages > 0 ? book.pages : 'Unknown'}</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-400">Released:</span>
+                            <span className="ml-2 text-gray-200">{book.publishYear || '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-gray-400">Price:</span>
+                            <div className="ml-2 text-gray-200" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                {formatPrice(book.price || book.priceHUF || book.priceINR, book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: statusTextColor[book.status], fontFamily: 'DM Mono, monospace', letterSpacing: '0.05em' }}>
+                            {statusLabels[book.status]}
+                        </span>
+                        <select value={book.status} onChange={(e) => onStatusChange(book.id, e.target.value)} className="text-sm px-3 py-1" style={{ width: 'auto' }}>
+                            <option value="TO_READ">To Read</option>
+                            <option value="READING">Reading</option>
+                            <option value="FINISHED">Finished</option>
+                        </select>
+                    </div>
+                </div>
+            );
+        }
+
+        function SearchBar({ apiKey, onBookAdded }) {
+            const [query, setQuery] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [confirmBook, setConfirmBook] = useState(null);
+            const [suggestions, setSuggestions] = useState([]);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            const [searchTimeout, setSearchTimeout] = useState(null);
+
+            const handleQueryChange = (value) => {
+                setQuery(value);
+                setError('');
+                
+                // Clear existing timeout
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                // Don't search if query is too short
+                if (value.trim().length < 3) {
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                    return;
+                }
+                
+                // Debounce the search
+                const timeout = setTimeout(async () => {
+                    try {
+                        const results = await searchMultipleSources(value);
+                        setSuggestions(results.slice(0, 5)); // Show top 5 results
+                        setShowSuggestions(results.length > 0);
+                    } catch (err) {
+                        console.error('Autocomplete error:', err);
+                        setSuggestions([]);
+                    }
+                }, 500);
+                
+                setSearchTimeout(timeout);
+            };
+
+            const selectSuggestion = (suggestion) => {
+                setQuery(`${suggestion.title} by ${suggestion.author}`);
+                setShowSuggestions(false);
+                setSuggestions([]);
+            };
+
+            const handleSearch = async (e, directBook = null) => {
+                e.preventDefault();
+                
+                if (directBook) {
+                    // User selected from dropdown
+                    const prices = convertPrices(
+                        directBook.priceUSD,
+                        directBook.priceHUF,
+                        directBook.priceINR
+                    );
+                    
+                    const bookData = {
+                        title: directBook.title,
+                        author: directBook.author,
+                        pages: directBook.pages || 0,
+                        seriesName: directBook.seriesName,
+                        publishYear: directBook.publishYear || null,
+                        priceUSD: prices.priceUSD,
+                        priceHUF: prices.priceHUF,
+                        priceINR: prices.priceINR
+                    };
+                    setConfirmBook(bookData);
+                    setShowSuggestions(false);
+                    return;
+                }
+                
+                if (!query.trim()) return;
+
+                setLoading(true);
+                setError('');
+                setShowSuggestions(false);
+
+                try {
+                    const bookData = await hybridBookSearch(query, apiKey);
+                    setConfirmBook(bookData);
+                } catch (err) {
+                    console.error('Search error:', err);
+                    
+                    // Provide more specific error messages
+                    let errorMessage = 'Failed to find book. ';
+                    
+                    if (err.message.includes('401') || err.message.includes('403')) {
+                        errorMessage = 'Invalid API key. Please check your Gemini API key in settings.';
+                    } else if (err.message.includes('429')) {
+                        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+                    } else if (err.message.includes('Invalid API response')) {
+                        errorMessage = 'The API returned an unexpected response. Please try again.';
+                    } else if (err.message.includes('No valid JSON')) {
+                        errorMessage = 'Could not parse book data. Try being more specific with your search.';
+                    } else if (err.message.includes('No results found')) {
+                        errorMessage = 'No books found matching your search. Try different keywords.';
+                    } else {
+                        errorMessage += err.message || 'Please try again or be more specific.';
+                    }
+                    
+                    setError(errorMessage);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleConfirm = async () => {
+                const newBook = {
+                    id: generateUUID(),
+                    ...confirmBook,
+                    status: 'TO_READ',
+                    dateAdded: new Date().toISOString()
+                };
+
+                await db.addBook(newBook);
+                onBookAdded(newBook);
+                setQuery('');
+                setConfirmBook(null);
+            };
+
+            return (
+                <>
+                    <form onSubmit={handleSearch} className="mb-8">
+                        <div className="glass-card search-glow p-6" style={{ position: 'relative', zIndex: 1 }}>
+                            <label className="block mb-3 text-sm font-medium" style={{ fontFamily: 'DM Mono, monospace', color: '#8b5cf6' }}>
+                                SEARCH FOR A BOOK
+                            </label>
+                            <div className="flex gap-3" style={{ position: 'relative' }}>
+                                <div style={{ flex: 1, position: 'relative' }}>
+                                    <input
+                                        type="text"
+                                        value={query}
+                                        onChange={(e) => handleQueryChange(e.target.value)}
+                                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                        placeholder="Enter book title, author, or description..."
+                                        disabled={loading}
+                                        className="flex-1"
+                                        autoComplete="off"
+                                    />
+                                    
+                                    {/* Autocomplete Dropdown */}
+                                    {showSuggestions && suggestions.length > 0 && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            right: 0,
+                                            marginTop: '8px',
+                                            background: 'rgba(15, 12, 41, 0.98)',
+                                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                                            borderRadius: '8px',
+                                            maxHeight: '300px',
+                                            overflowY: 'auto',
+                                            zIndex: 1,
+                                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+                                        }}>
+                                            {suggestions.map((book, index) => (
+                                                <div
+                                                    key={index}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleSearch(e, book);
+                                                    }}
+                                                    style={{
+                                                        padding: '12px 16px',
+                                                        cursor: 'pointer',
+                                                        borderBottom: index < suggestions.length - 1 ? '1px solid rgba(255, 255, 255, 0.05)' : 'none',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'transparent';
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                        {book.coverUrl && (
+                                                            <img 
+                                                                src={book.coverUrl} 
+                                                                alt={book.title}
+                                                                style={{ 
+                                                                    width: '40px', 
+                                                                    height: '60px', 
+                                                                    objectFit: 'cover',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                                                }}
+                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                            />
+                                                        )}
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ fontWeight: 600, color: '#e8e6e3', marginBottom: '2px' }}>
+                                                                {book.title}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                                                                {book.author}
+                                                                {book.publishYear && ` (${book.publishYear})`}
+                                                                {book.pages > 0 && ` • ${book.pages} pages`}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                                                                {book.source}
+                                                                {book.price || book.priceHUF || book.priceINR ? ` • ${formatPrice(book.price || book.priceHUF || book.priceINR, book.currency || (book.priceHUF ? 'HUF' : book.priceINR ? 'INR' : 'USD'))}` : ''}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="btn-primary"
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <div className="loader mx-auto"></div>
+                                    ) : (
+                                        'Search'
+                                    )}
+                                </button>
+                            </div>
+                            {error && (
+                                <p className="mt-3 text-sm text-red-400">{error}</p>
+                            )}
+                        </div>
+                    </form>
+
+                    {confirmBook && (
+                        <ConfirmationModal
+                            book={confirmBook}
+                            onConfirm={handleConfirm}
+                            onCancel={() => setConfirmBook(null)}
+                        />
+                    )}
+                </>
+            );
+        }
+
+        // ==================== SETTINGS MODAL ====================
+        function SettingsModal({ apiKey, setApiKey, currentLanguage, currentBgTheme, onSave, onSaveApiKey, onClose }) {
+            const { bgTheme: activeBgTheme } = useContext(SettingsContext);
+            const [lang, setLang] = React.useState(currentLanguage);
+            const [bg, setBg] = React.useState(currentBgTheme);
+            const isLight = activeBgTheme === 'white';
+
+            const clr = {
+                heading:    isLight ? '#5b21b6' : '#a78bfa',
+                sectionLbl: isLight ? '#4c1d95' : '#7c6fa0',
+                close:      isLight ? '#4c1d95' : '#94a3b8',
+                langInact:  isLight ? '#3730a3' : '#94a3b8',
+                langBorder: isLight ? 'rgba(109,40,217,0.2)' : 'rgba(255,255,255,0.1)',
+                langBg:     isLight ? 'rgba(109,40,217,0.06)' : 'rgba(255,255,255,0.04)',
+                apiNote:    isLight ? '#4c1d95' : '#64748b',
+                apiLink:    isLight ? '#6d28d9' : '#a78bfa',
+            };
+
+            const handleSave = () => {
+                localStorage.setItem('gemini_api_key', apiKey);
+                onSave(lang, bg);
+            };
+
+            const sectionLabel = (text) => (
+                <p style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.75rem', color: clr.sectionLbl, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', paddingTop: '4px' }}>{text}</p>
+            );
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+                            <h2 style={{ color: clr.heading, fontFamily: 'Crimson Pro, serif', fontSize: '1.6rem', fontWeight: 700 }}>⚙ Settings</h2>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: clr.close, cursor: 'pointer', fontSize: '1.3rem' }}>✕</button>
+                        </div>
+
+                        {/* Language */}
+                        <div style={{ marginBottom: '32px' }}>
+                            {sectionLabel('🌐 Language')}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                {Object.entries(LANGUAGES).map(([code, l]) => (
+                                    <button
+                                        key={code}
+                                        onClick={() => setLang(code)}
+                                        style={{
+                                            padding: '11px 8px',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${lang === code ? '#a78bfa' : clr.langBorder}`,
+                                            background: lang === code ? 'rgba(139,92,246,0.2)' : clr.langBg,
+                                            color: lang === code ? (isLight ? '#5b21b6' : '#c4b5fd') : clr.langInact,
+                                            cursor: 'pointer',
+                                            fontFamily: 'DM Mono, monospace',
+                                            fontSize: '0.78rem',
+                                            fontWeight: lang === code ? 600 : 400,
+                                            transition: 'all 0.2s ease',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                                        }}
+                                    >
+                                        <span>{l.flag}</span> {l.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Background Theme */}
+                        <div style={{ marginBottom: '32px' }}>
+                            {sectionLabel('🎨 Background Theme')}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                                {BG_THEMES.map(theme => (
+                                    <button
+                                        key={theme.id}
+                                        onClick={() => setBg(theme.id)}
+                                        title={theme.label}
+                                        style={{
+                                            height: '52px',
+                                            borderRadius: '10px',
+                                            border: `2px solid ${bg === theme.id ? '#fff' : 'transparent'}`,
+                                            background: theme.bg,
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            transition: 'all 0.2s ease',
+                                            overflow: 'hidden',
+                                            boxShadow: bg === theme.id ? `0 0 0 1px ${theme.accent}, 0 4px 16px rgba(0,0,0,0.4)` : 'none',
+                                        }}
+                                    >
+                                        <span style={{
+                                            position: 'absolute', bottom: '3px', left: 0, right: 0,
+                                            fontSize: '0.6rem', fontFamily: 'DM Mono, monospace',
+                                            color: theme.id === 'white' ? '#333' : '#fff',
+                                            textAlign: 'center', opacity: 0.9
+                                        }}>{theme.label}</span>
+                                        {bg === theme.id && (
+                                            <span style={{
+                                                position: 'absolute', top: '4px', right: '4px',
+                                                width: '10px', height: '10px', borderRadius: '50%',
+                                                background: theme.accent,
+                                                boxShadow: '0 0 4px rgba(255,255,255,0.6)'
+                                            }} />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* API Key */}
+                        <div style={{ marginBottom: '28px' }}>
+                            {sectionLabel('🔑 API Key')}
+                            <input
+                                type="password"
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                placeholder="Enter your Gemini API key..."
+                                style={{ marginBottom: '10px' }}
+                            />
+                            <p style={{ fontSize: '0.75rem', color: clr.apiNote, fontFamily: 'DM Mono, monospace', lineHeight: '1.6', paddingLeft: '2px' }}>
+                                The app uses Open Library for book data. The API key is optional and only used as a fallback.{' '}
+                                <a href="https://makersuite.google.com/app/apikey" target="_blank" style={{ color: clr.apiLink }}>Get one free →</a>
+                            </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+                            <button onClick={handleSave} className="btn-primary" style={{ flex: 1 }}>
+                                Save Settings
+                            </button>
+                            <button onClick={onClose} className="btn-secondary">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== IMPORT MODAL ====================
+        // ==================== SYNC MODAL ====================
+        function SyncModal({ books, relayUrl: savedUrl, onSyncPush, onSyncPull, onImportFile, onImportGoogleSheets, onExportCSV, onClose }) {
+            const { bgTheme } = useContext(SettingsContext);
+            const isLight = bgTheme === 'white';
+            const [activeTab, setActiveTab] = React.useState('relay');
+            const [url, setUrl] = React.useState(savedUrl || '');
+            const [loading, setLoading] = React.useState(false);
+            const [status, setStatus] = React.useState(null); // {type:'ok'|'err', msg}
+            const [dragOver, setDragOver] = React.useState(false);
+            const [selectedFile, setSelectedFile] = React.useState(null);
+            const [gsUrl, setGsUrl] = React.useState('');
+            const fileInputRef = React.useRef(null);
+
+            const clr = {
+                head:    isLight ? '#5b21b6' : '#a78bfa',
+                close:   isLight ? '#4c1d95' : '#94a3b8',
+                muted:   isLight ? '#4c1d95' : '#94a3b8',
+                dim:     isLight ? '#5b21b6' : '#7c6fa0',
+                accent:  isLight ? '#6d28d9' : '#a78bfa',
+                warn:    isLight ? '#7c2d12' : '#fca5a5',
+                warnStr: isLight ? '#7c2d12' : '#fca5a5',
+                tipBg:   isLight ? 'rgba(109,40,217,0.07)' : 'rgba(139,92,246,0.07)',
+                tipBord: isLight ? 'rgba(109,40,217,0.2)' : 'rgba(139,92,246,0.2)',
+                ok:      '#86efac',
+                err:     '#f87171',
+            };
+
+            const setOk  = (msg) => setStatus({ type: 'ok',  msg });
+            const setErr = (msg) => setStatus({ type: 'err', msg });
+
+            const handlePush = async () => {
+                if (!url.trim()) return setErr('Please enter your Apps Script relay URL.');
+                setLoading(true); setStatus(null);
+                const res = await onSyncPush(url.trim());
+                setLoading(false);
+                res.ok ? setOk(`✓ Pushed ${res.count} books to Google Sheets.`) : setErr(`Push failed: ${res.error}`);
+            };
+
+            const handlePull = async () => {
+                if (!url.trim()) return setErr('Please enter your Apps Script relay URL.');
+                setLoading(true); setStatus(null);
+                const res = await onSyncPull(url.trim());
+                setLoading(false);
+                res.ok ? setOk(`✓ Pulled ${res.count} books from Google Sheets.`) : setErr(`Pull failed: ${res.error}`);
+            };
+
+            const handleFileImport = async () => {
+                if (!selectedFile) return;
+                setLoading(true); setStatus(null);
+                await onImportFile(selectedFile);
+                setLoading(false);
+            };
+
+            const handleGsImport = async () => {
+                if (!gsUrl.trim()) return;
+                setLoading(true); setStatus(null);
+                await onImportGoogleSheets(gsUrl.trim());
+                setLoading(false);
+            };
+
+            const tabs = [
+                { id: 'relay', label: '🔄 Google Sheets Sync' },
+                { id: 'backup', label: '💾 Local Backup' },
+            ];
+
+            const sectionStyle = { marginBottom: '20px' };
+            const labelStyle = { fontFamily: 'DM Mono, monospace', fontSize: '0.72rem', color: clr.dim, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', display: 'block' };
+            const noteStyle = { fontSize: '0.78rem', color: clr.muted, fontFamily: 'DM Mono, monospace', lineHeight: '1.6' };
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', maxHeight: '92vh', overflowY: 'auto' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
+                            <h2 style={{ color: clr.head, fontFamily: 'Crimson Pro, serif', fontSize: '1.55rem', fontWeight: 700 }}>⇅ Sync &amp; Backup</h2>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: clr.close, cursor: 'pointer', fontSize: '1.4rem' }}>✕</button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    className={`import-tab ${activeTab === tab.id ? 'active' : ''}`}
+                                    onClick={() => { setActiveTab(tab.id); setStatus(null); }}
+                                    style={{ fontSize: '0.8rem' }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Status message */}
+                        {status && (
+                            <div style={{
+                                padding: '10px 14px', borderRadius: '8px', marginBottom: '18px',
+                                background: status.type === 'ok' ? 'rgba(134,239,172,0.1)' : 'rgba(248,113,113,0.1)',
+                                border: `1px solid ${status.type === 'ok' ? 'rgba(134,239,172,0.3)' : 'rgba(248,113,113,0.3)'}`,
+                                color: status.type === 'ok' ? clr.ok : clr.err,
+                                fontFamily: 'DM Mono, monospace', fontSize: '0.82rem'
+                            }}>
+                                {status.msg}
+                            </div>
+                        )}
+
+                        {/* ── Google Sheets Relay Tab ── */}
+                        {activeTab === 'relay' && (
+                            <div>
+                                <div style={sectionStyle}>
+                                    <span style={labelStyle}>Apps Script Relay URL</span>
+                                    <input
+                                        type="url"
+                                        value={url}
+                                        onChange={e => setUrl(e.target.value)}
+                                        placeholder="https://script.google.com/macros/s/.../exec"
+                                        style={{ fontSize: '0.85rem', marginBottom: '10px' }}
+                                    />
+                                    <p style={noteStyle}>
+                                        Paste the <strong>Web App URL</strong> from your deployed Apps Script relay. See the README for setup instructions.
+                                    </p>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ flex: 1 }}
+                                        onClick={handlePush}
+                                        disabled={loading || !books.length}
+                                        title="Write your library to the Google Sheet"
+                                    >
+                                        {loading ? 'Working…' : `↑ Push to Sheets (${books.length} books)`}
+                                    </button>
+                                    <button
+                                        className="btn-secondary"
+                                        style={{ flex: 1 }}
+                                        onClick={handlePull}
+                                        disabled={loading}
+                                        title="Replace your local library with data from the Sheet"
+                                    >
+                                        {loading ? 'Working…' : '↓ Pull from Sheets'}
+                                    </button>
+                                </div>
+
+                                <div style={{ background: clr.tipBg, border: `1px solid ${clr.tipBord}`, borderRadius: '10px', padding: '14px 16px' }}>
+                                    <p style={{ ...noteStyle, marginBottom: '8px' }}>
+                                        <strong style={{ color: clr.accent }}>How it works:</strong>
+                                    </p>
+                                    <p style={{ ...noteStyle, marginBottom: '6px' }}>
+                                        <strong style={{ color: clr.accent }}>↑ Push</strong> — overwrites the <code style={{ color: clr.accent }}>Eszti_Library</code> tab in your sheet with your current library.
+                                    </p>
+                                    <p style={{ ...noteStyle, marginBottom: '6px' }}>
+                                        <strong style={{ color: clr.accent }}>↓ Pull</strong> — <span style={{ color: clr.warn }}>replaces your local library</span> with whatever is in the sheet.
+                                    </p>
+                                    <p style={noteStyle}>
+                                        See the <strong>README</strong> file for step-by-step Google Apps Script setup.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Local Backup Tab ── */}
+                        {activeTab === 'backup' && (
+                            <div>
+                                {/* Export */}
+                                <div style={sectionStyle}>
+                                    <span style={labelStyle}>📤 Export — download a CSV backup</span>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ width: '100%' }}
+                                        onClick={() => { onExportCSV(); setOk('✓ CSV backup downloaded.'); }}
+                                        disabled={!books.length}
+                                    >
+                                        ↓ Download CSV Backup ({books.length} books)
+                                    </button>
+                                </div>
+
+                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '20px 0' }} />
+
+                                {/* File restore */}
+                                <div style={sectionStyle}>
+                                    <span style={labelStyle}>📥 Restore from file (.csv / .xlsx)</span>
+                                    <div
+                                        className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+                                        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                        onDragLeave={() => setDragOver(false)}
+                                        onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) setSelectedFile(f); }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        style={{ marginBottom: '10px' }}
+                                    >
+                                        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.xlsm" onChange={e => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); }} style={{ display: 'none' }} />
+                                        <div style={{ pointerEvents: 'none' }}>
+                                            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{dragOver ? '🎯' : '📂'}</div>
+                                            <p style={{ color: clr.accent, fontFamily: 'DM Mono, monospace', fontSize: '0.85rem', marginBottom: '4px' }}>
+                                                {dragOver ? 'Drop it here!' : 'Drag & drop or click to browse'}
+                                            </p>
+                                            <p style={{ color: clr.muted, fontSize: '0.75rem', fontFamily: 'DM Mono, monospace' }}>
+                                                Supports: .csv · .xlsx · .xls
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {selectedFile && (
+                                        <div className="file-badge" style={{ marginBottom: '10px' }}>
+                                            <span>{selectedFile.name.endsWith('.csv') ? '📋' : '📊'}</span>
+                                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedFile.name}</span>
+                                            <span style={{ color: clr.muted }}>{(selectedFile.size / 1024).toFixed(1)} KB</span>
+                                            <button onClick={() => setSelectedFile(null)} style={{ background: 'none', border: 'none', color: clr.close, cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                                        </div>
+                                    )}
+                                    <p style={{ ...noteStyle, color: clr.warn, marginBottom: '10px' }}>
+                                        ⚠ Restoring from a file will <strong>replace</strong> your current local library.
+                                    </p>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ width: '100%' }}
+                                        onClick={handleFileImport}
+                                        disabled={!selectedFile || loading}
+                                    >
+                                        {loading ? 'Restoring…' : '↑ Restore from File'}
+                                    </button>
+                                </div>
+
+                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '20px 0' }} />
+
+                                {/* Google Sheets read-only import */}
+                                <div style={sectionStyle}>
+                                    <span style={labelStyle}>🌐 Import from public Google Sheet (read-only)</span>
+                                    <p style={{ ...noteStyle, marginBottom: '10px' }}>
+                                        Sheet must be shared as <strong style={{ color: clr.accent }}>"Anyone with the link can view"</strong>. This does not require the Apps Script relay.
+                                    </p>
+                                    <input
+                                        type="url"
+                                        placeholder="https://docs.google.com/spreadsheets/d/..."
+                                        value={gsUrl}
+                                        onChange={e => setGsUrl(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleGsImport()}
+                                        style={{ fontSize: '0.85rem', marginBottom: '10px' }}
+                                    />
+                                    <button
+                                        className="btn-secondary"
+                                        style={{ width: '100%' }}
+                                        onClick={handleGsImport}
+                                        disabled={!gsUrl.trim() || loading}
+                                    >
+                                        {loading ? 'Fetching…' : '↓ Import from Google Sheets'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [books, setBooks] = useState([]);
+            const [activeTab, setActiveTab] = useState('ALL');
+            const [apiKey, setApiKey] = useState('');
+            const [showSettings, setShowSettings] = useState(false);
+            const [showManualEntry, setShowManualEntry] = useState(false);
+            const [showHelp, setShowHelp] = useState(false);
+            const [editingBook, setEditingBook] = useState(null);
+            const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+            const [sortBy, setSortBy] = useState('dateAdded'); // 'dateAdded', 'title', 'author'
+            const [sortDir, setSortDir] = useState('desc'); // 'asc' or 'desc'
+            const [libraryQuery, setLibraryQuery] = useState('');
+            const [dbReady, setDbReady] = useState(false);
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [language, setLanguage] = useState(() => localStorage.getItem('lms_language') || 'en');
+            const [bgTheme, setBgTheme] = useState(() => localStorage.getItem('lms_bg_theme') || 'default');
+            const [relayUrl, setRelayUrl] = useState(() => localStorage.getItem('lms_relay_url') || '');
+
+            const t = LANGUAGES[language] || LANGUAGES.en;
+            const theme = BG_THEMES.find(b => b.id === bgTheme) || BG_THEMES[0];
+
+            useEffect(() => {
+                // Initialize database and load books
+                db.init().then(() => {
+                    setDbReady(true);
+                    loadBooks();
+                });
+
+                // Load API key from localStorage
+                const savedKey = localStorage.getItem('gemini_api_key');
+                if (savedKey) {
+                    setApiKey(savedKey);
+                }
+            }, []);
+
+            // Auto-backup whenever books change
+            useEffect(() => {
+                if (books.length > 0) {
+                    autoBackup(books);
+                }
+            }, [books]);
+
+            const loadBooks = async () => {
+                const allBooks = await db.getAllBooks();
+                setBooks(allBooks);
+            };
+
+            const handleBookAdded = (book) => {
+                setBooks([...books, book]);
+            };
+
+            const handleManualEntry = async (bookData) => {
+                const newBook = {
+                    id: generateUUID(),
+                    ...bookData,
+                    status: 'TO_READ',
+                    dateAdded: new Date().toISOString()
+                };
+
+                await db.addBook(newBook);
+                setBooks([...books, newBook]);
+                setShowManualEntry(false);
+            };
+
+            const handleStatusChange = async (id, newStatus) => {
+                await db.updateBook(id, { status: newStatus });
+                setBooks(books.map(book => 
+                    book.id === id ? { ...book, status: newStatus } : book
+                ));
+            };
+
+            const handleDeleteBook = async (id) => {
+                if (confirm((LANGUAGES[language] || LANGUAGES.en).deleteConfirm)) {
+                    await db.deleteBook(id);
+                    setBooks(books.filter(book => book.id !== id));
+                }
+            };
+
+            const handleEditBook = async (id, updatedData) => {
+                await db.updateBook(id, updatedData);
+                setBooks(books.map(book => 
+                    book.id === id ? { ...book, ...updatedData } : book
+                ));
+                setEditingBook(null);
+            };
+
+            const handleExport = () => {
+                exportToCSV(books);
+            };
+
+            const handleSyncPush = async (url) => {
+                try {
+                    const count = await pushToRelay(url, books);
+                    localStorage.setItem('lms_relay_url', url);
+                    setRelayUrl(url);
+                    return { ok: true, count };
+                } catch (e) {
+                    return { ok: false, error: e.message };
+                }
+            };
+
+            const handleSyncPull = async (url) => {
+                try {
+                    const importedBooks = await pullFromRelay(url);
+                    if (!importedBooks.length) return { ok: false, error: 'No books found in the sheet.' };
+                    await db.clearAllBooks();
+                    let added = 0;
+                    for (const book of importedBooks) {
+                        try { await db.addBook(book); added++; } catch {}
+                    }
+                    await loadBooks();
+                    localStorage.setItem('lms_relay_url', url);
+                    setRelayUrl(url);
+                    return { ok: true, count: added };
+                } catch (e) {
+                    return { ok: false, error: e.message };
+                }
+            };
+
+            const handleImport = async (file) => {
+                if (!file) return;
+                let importedBooks = [];
+                try {
+                    const name = file.name.toLowerCase();
+                    if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm')) {
+                        importedBooks = await importFromExcel(file);
+                    } else {
+                        importedBooks = await importFromCSV(file);
+                    }
+                } catch (error) {
+                    alert(`Could not read the file: ${error.message}`);
+                    return;
+                }
+                if (!importedBooks.length) {
+                    alert('No books found. Make sure the file has "Title" and "Author" column headers.');
+                    return;
+                }
+                await db.clearAllBooks();
+                let added = 0;
+                for (const book of importedBooks) {
+                    try { await db.addBook(book); added++; } catch {}
+                }
+                await loadBooks();
+                setShowImportModal(false);
+                alert(`Library restored: ${added} book${added !== 1 ? 's' : ''} imported.`);
+            };
+
+            const handleImportGoogleSheets = async (url) => {
+                let importedBooks = [];
+                try { importedBooks = await importFromGoogleSheetsUrl(url); }
+                catch (error) { alert(`Could not import from Google Sheets: ${error.message}`); return; }
+                if (!importedBooks.length) { alert('No books found in the Google Sheet.'); return; }
+                await db.clearAllBooks();
+                let added = 0;
+                for (const book of importedBooks) {
+                    try { await db.addBook(book); added++; } catch {}
+                }
+                await loadBooks();
+                setShowImportModal(false);
+                alert(`Library restored: ${added} book${added !== 1 ? 's' : ''} imported.`);
+            };
+
+            const saveApiKey = () => {
+                localStorage.setItem('gemini_api_key', apiKey);
+                setShowSettings(false);
+            };
+
+            const saveSettings = (newLang, newBg) => {
+                localStorage.setItem('lms_language', newLang);
+                localStorage.setItem('lms_bg_theme', newBg);
+                setLanguage(newLang);
+                setBgTheme(newBg);
+                setShowSettings(false);
+            };
+
+            const filteredBooks = (activeTab === 'ALL' 
+                ? books 
+                : books.filter(book => book.status === activeTab)
+            ).filter(book => {
+                if (!libraryQuery.trim()) return true;
+                const q = libraryQuery.trim().toLowerCase();
+                return (
+                    (book.title || '').toLowerCase().includes(q) ||
+                    (book.author || '').toLowerCase().includes(q) ||
+                    (book.seriesName || '').toLowerCase().includes(q)
+                );
+            }).slice().sort((a, b) => {
+                let cmp = 0;
+                if (sortBy === 'title') {
+                    cmp = (a.title || '').localeCompare(b.title || '');
+                } else if (sortBy === 'author') {
+                    cmp = (a.author || '').localeCompare(b.author || '');
+                } else if (sortBy === 'publishYear') {
+                    cmp = (a.publishYear || 0) - (b.publishYear || 0);
+                } else {
+                    cmp = new Date(a.dateAdded || 0) - new Date(b.dateAdded || 0);
+                }
+                return sortDir === 'asc' ? cmp : -cmp;
+            });
+
+            const counts = {
+                ALL: books.length,
+                TO_READ: books.filter(b => b.status === 'TO_READ').length,
+                READING: books.filter(b => b.status === 'READING').length,
+                FINISHED: books.filter(b => b.status === 'FINISHED').length
+            };
+
+            if (!dbReady) {
+                return (
+                    <div className="app-container min-h-screen flex items-center justify-center">
+                        <div className="loader" style={{ width: '48px', height: '48px' }}></div>
+                    </div>
+                );
+            }
+
+            return (
+                <SettingsContext.Provider value={{ t, theme, language, bgTheme }}>
+                <div className={`app-container min-h-screen${bgTheme === 'white' ? ' theme-light' : ''}`} style={{
+                    background: theme.bg,
+                    backgroundAttachment: 'fixed',
+                    minHeight: '100vh',
+                    color: bgTheme === 'white' ? '#1e1b4b' : '#e8e6e3',
+                    padding: 'clamp(20px, 4vw, 56px) clamp(16px, 5vw, 72px)'
+                }}>
+                    <div className="max-w-7xl mx-auto">
+                        {/* Header */}
+                        <div className="mb-12">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', gap: '24px' }}>
+                                <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                                    <h1 className="text-5xl font-bold mb-2" style={{ color: theme.accent }}>
+                                        Eszti's Little Library
+                                    </h1>
+                                    <p className="text-sm mb-3" style={{ 
+                                        fontFamily: 'Crimson Pro, serif', 
+                                        color: bgTheme === 'white' ? '#5b21b6' : '#e8e6e3', 
+                                        opacity: 0.85,
+                                        fontStyle: 'italic',
+                                        letterSpacing: '0.05em'
+                                    }}>
+                                        {t.appSubtitle}
+                                    </p>
+                                    <p style={{ 
+                                        fontFamily: 'Crimson Pro, serif',
+                                        fontSize: '1rem',
+                                        lineHeight: '1.6',
+                                        maxWidth: '600px',
+                                        color: bgTheme === 'white' ? '#4c1d95' : '#cbd5e1'
+                                    }}>
+                                        {t.appDesc}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', flexShrink: 0, gap: '10px', paddingTop: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                    <button 
+                                        onClick={() => setShowImportModal(true)}
+                                        className="btn-secondary"
+                                        title="Sync & Backup"
+                                    >
+                                        ⇅ Sync
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowSettings(true)}
+                                        className="btn-secondary"
+                                        title="Settings"
+                                    >
+                                        ⚙
+                                    </button>
+                                </div>
+                            </div>
+
+                            <SearchBar apiKey={apiKey} onBookAdded={handleBookAdded} />
+                            
+                            {/* Manual Add Button and Help Button */}
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', marginTop: '16px' }}>
+                                <button 
+                                    onClick={() => setShowManualEntry(true)}
+                                    className="btn-secondary"
+                                    style={{ minWidth: '150px' }}
+                                >
+                                    + {t.addManually.replace('+ ', '')}
+                                </button>
+                                <button
+                                    onClick={() => setShowHelp(true)}
+                                    className="btn-secondary"
+                                    style={{ 
+                                        width: '40px',
+                                        height: '40px',
+                                        padding: '0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.2rem'
+                                    }}
+                                    title="Help & Instructions"
+                                >
+                                    ℹ️
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="border-b border-white/10 mb-8">
+                            <div className="flex gap-2 items-center justify-between">
+                                <div className="flex gap-2">
+                                    {['ALL', 'TO_READ', 'READING', 'FINISHED'].map(tab => {
+                                        const tabLabel = tab === 'ALL' ? t.all : tab === 'TO_READ' ? t.toRead : tab === 'READING' ? t.reading : t.finished;
+                                        return (
+                                            <button
+                                                key={tab}
+                                                className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                                                onClick={() => setActiveTab(tab)}
+                                            >
+                                                {tabLabel} ({counts[tab]})
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                
+                                {/* Sort & View Controls */}
+                                <div style={{ display: 'flex', gap: '8px', paddingBottom: '12px', alignItems: 'center' }}>
+                                    {/* Sort Buttons */}
+                                    <div style={{ display: 'flex', gap: '4px', marginRight: '8px', borderRight: '1px solid rgba(255,255,255,0.15)', paddingRight: '12px' }}>
+                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.7rem', color: '#64748b', alignSelf: 'center', marginRight: '4px', letterSpacing: '0.05em' }}>SORT</span>
+                                        {[
+                                            { key: 'dateAdded', label: 'Date' },
+                                            { key: 'title', label: 'Title' },
+                                            { key: 'author', label: 'Author' },
+                                            { key: 'publishYear', label: 'Released' }
+                                        ].map(({ key, label }) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => {
+                                                    if (sortBy === key) {
+                                                        setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy(key);
+                                                        setSortDir(key === 'dateAdded' ? 'desc' : 'asc');
+                                                    }
+                                                }}
+                                                className="btn-secondary"
+                                                style={{
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.75rem',
+                                                    fontFamily: 'DM Mono, monospace',
+                                                    letterSpacing: '0.03em',
+                                                    background: sortBy === key ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                                                    borderColor: sortBy === key ? 'rgba(139, 92, 246, 0.5)' : 'rgba(255, 255, 255, 0.2)',
+                                                    color: sortBy === key ? '#c4b5fd' : '#94a3b8',
+                                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                                }}
+                                                title={`Sort by ${label} (${sortBy === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'click to sort'})`}
+                                            >
+                                                {label}
+                                                {sortBy === key && (
+                                                    <span style={{ fontSize: '0.7rem', lineHeight: 1 }}>
+                                                        {sortDir === 'asc' ? '↑' : '↓'}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* View Mode Toggle */}
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`btn-secondary ${viewMode === 'grid' ? 'active' : ''}`}
+                                        style={{
+                                            padding: '6px 12px',
+                                            background: viewMode === 'grid' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                                            borderColor: viewMode === 'grid' ? 'rgba(139, 92, 246, 0.5)' : 'rgba(255, 255, 255, 0.2)'
+                                        }}
+                                        title="Grid view"
+                                    >
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z"/>
+                                        </svg>
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`btn-secondary ${viewMode === 'list' ? 'active' : ''}`}
+                                        style={{
+                                            padding: '6px 12px',
+                                            background: viewMode === 'list' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                                            borderColor: viewMode === 'list' ? 'rgba(139, 92, 246, 0.5)' : 'rgba(255, 255, 255, 0.2)'
+                                        }}
+                                        title="List view"
+                                    >
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Stats Bar */}
+                        {books.length > 0 && (() => {
+                            const pagesFinished = books.filter(b => b.status === 'FINISHED').reduce((s, b) => s + (b.pages || 0), 0);
+                            const pagesReading  = books.filter(b => b.status === 'READING').reduce((s, b) => s + (b.pages || 0), 0);
+                            const pagesToRead   = books.filter(b => b.status === 'TO_READ').reduce((s, b) => s + (b.pages || 0), 0);
+                            const totalAll      = pagesFinished + pagesReading + pagesToRead;
+                            const stats = [
+                                { label: 'Pages Read', value: pagesFinished, color: '#86efac', icon: '✅' },
+                                { label: 'Currently Reading', value: pagesReading, color: '#fde047', icon: '📖' },
+                                { label: 'Still to Read', value: pagesToRead, color: '#f87171', icon: '📕' },
+                                { label: 'Total Pages', value: totalAll, color: '#a78bfa', icon: '📚' },
+                            ];
+                            return (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                                    {stats.map(({ label, value, color, icon }) => (
+                                        <div key={label} className="glass-card" style={{ padding: '14px 16px', borderRadius: '10px', textAlign: 'center', border: `1px solid ${color}33` }}>
+                                            <div style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{icon}</div>
+                                            <div style={{ fontSize: '1.4rem', fontWeight: 800, color, fontFamily: 'Crimson Pro, serif', lineHeight: 1 }}>
+                                                {value.toLocaleString()}
+                                            </div>
+                                            <div style={{ fontSize: '0.68rem', color: '#64748b', fontFamily: 'DM Mono, monospace', marginTop: '4px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                                                {label}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Library Filter Search */}
+                        <div style={{ marginBottom: '20px', position: 'relative' }}>
+                            <div style={{ position: 'relative' }}>
+                                <svg
+                                    width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    value={libraryQuery}
+                                    onChange={(e) => setLibraryQuery(e.target.value)}
+                                    placeholder="Filter your library by title, author or series..."
+                                    style={{ paddingLeft: '42px', paddingRight: libraryQuery ? '42px' : '16px' }}
+                                    autoComplete="off"
+                                />
+                                {libraryQuery && (
+                                    <button
+                                        onClick={() => setLibraryQuery('')}
+                                        style={{
+                                            position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
+                                            fontSize: '1.1rem', lineHeight: 1, padding: '2px'
+                                        }}
+                                        title="Clear filter"
+                                    >×</button>
+                                )}
+                            </div>
+                            {libraryQuery.trim() && (
+                                <p style={{ marginTop: '6px', fontSize: '0.78rem', fontFamily: 'DM Mono, monospace', color: '#64748b', letterSpacing: '0.03em' }}>
+                                    {filteredBooks.length} result{filteredBooks.length !== 1 ? 's' : ''} for "{libraryQuery.trim()}"
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Books Grid/List */}
+                        {filteredBooks.length > 0 ? (
+                            viewMode === 'grid' ? (
+                                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+                                    {filteredBooks.map(book => (
+                                        <BookCard
+                                            key={book.id}
+                                            book={book}
+                                            onStatusChange={handleStatusChange}
+                                            onDelete={handleDeleteBook}
+                                            onEdit={setEditingBook}
+                                            viewMode={viewMode}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div>
+                                    {(() => {
+                                        // 1. Group into series (2+ books) and standalone
+                                        const seriesMap = {};
+                                        const standalone = [];
+                                        filteredBooks.forEach(book => {
+                                            const key = book.seriesName && book.seriesName.trim()
+                                                ? book.seriesName.trim().toLowerCase() : null;
+                                            if (key) {
+                                                if (!seriesMap[key]) seriesMap[key] = { name: book.seriesName.trim(), books: [] };
+                                                seriesMap[key].books.push(book);
+                                            } else {
+                                                standalone.push(book);
+                                            }
+                                        });
+
+                                        // Single-book "series" fall back to standalone
+                                        Object.values(seriesMap).forEach(({ name, books: sb }) => {
+                                            if (sb.length < 2) standalone.push(...sb);
+                                        });
+                                        const multiSeries = Object.values(seriesMap).filter(s => s.books.length >= 2);
+
+                                        // Compute a sort key for any book
+                                        const getBookSortKey = (book) => {
+                                            if (sortBy === 'author') return (book.author || '').toLowerCase();
+                                            if (sortBy === 'publishYear') return book.publishYear || 0;
+                                            if (sortBy === 'dateAdded') return new Date(book.dateAdded || 0).getTime();
+                                            return (book.title || '').toLowerCase();
+                                        };
+
+                                        // For a series, use the same field — pick earliest/lowest value across books
+                                        // so the series card slots in alongside individual books naturally
+                                        const getSeriesSortKey = (s) => {
+                                            if (sortBy === 'title') return s.name.toLowerCase();
+                                            if (sortBy === 'author') return (s.books[0]?.author || '').toLowerCase();
+                                            if (sortBy === 'publishYear') {
+                                                const years = s.books.map(b => b.publishYear || 0).filter(y => y > 0);
+                                                return years.length ? Math.min(...years) : 0;
+                                            }
+                                            if (sortBy === 'dateAdded') {
+                                                return Math.min(...s.books.map(b => new Date(b.dateAdded || 0).getTime()));
+                                            }
+                                            return s.name.toLowerCase();
+                                        };
+
+                                        const items = [
+                                            ...multiSeries.map(s => ({
+                                                type: 'series',
+                                                key: `series-${s.name}`,
+                                                sortVal: getSeriesSortKey(s),
+                                                data: s
+                                            })),
+                                            ...standalone.map(book => ({
+                                                type: 'book',
+                                                key: book.id,
+                                                sortVal: getBookSortKey(book),
+                                                data: book
+                                            }))
+                                        ];
+
+                                        // Sort everything together by the same key type
+                                        items.sort((a, b) => {
+                                            let cmp = 0;
+                                            if (typeof a.sortVal === 'number' && typeof b.sortVal === 'number') {
+                                                cmp = a.sortVal - b.sortVal;
+                                            } else {
+                                                cmp = String(a.sortVal).localeCompare(String(b.sortVal));
+                                            }
+                                            return sortDir === 'asc' ? cmp : -cmp;
+                                        });
+
+                                        // 4. Render
+                                        return items.map(item => {
+                                            if (item.type === 'series') {
+                                                return (
+                                                    <SeriesCard
+                                                        key={item.key}
+                                                        seriesName={item.data.name}
+                                                        books={item.data.books}
+                                                        onStatusChange={handleStatusChange}
+                                                        onDelete={handleDeleteBook}
+                                                        onEdit={setEditingBook}
+                                                        sortBy={sortBy}
+                                                        sortDir={sortDir}
+                                                    />
+                                                );
+                                            } else {
+                                                return (
+                                                    <BookCard
+                                                        key={item.key}
+                                                        book={item.data}
+                                                        onStatusChange={handleStatusChange}
+                                                        onDelete={handleDeleteBook}
+                                                        onEdit={setEditingBook}
+                                                        viewMode="list"
+                                                    />
+                                                );
+                                            }
+                                        });
+                                    })()}
+                                </div>
+                            )
+                        ) : (
+                            <div className="empty-state">
+                                <svg width="120" height="120" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="mx-auto">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                                <p className="text-lg">
+                                    {activeTab === 'ALL' 
+                                        ? 'Your library is empty. Search for a book to get started!'
+                                        : `No books in ${activeTab.replace('_', ' ').toLowerCase()} status.`
+                                    }
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="footer-message" style={{
+                        position: 'fixed',
+                        bottom: '20px',
+                        right: '30px',
+                        color: 'white',
+                        opacity: 0.4,
+                        fontSize: '0.875rem',
+                        fontFamily: 'Crimson Pro, serif',
+                        fontStyle: 'italic',
+                        letterSpacing: '0.02em',
+                        zIndex: 0,
+                        pointerEvents: 'none'
+                    }}>
+                        By Clawy with Claude Sonnet 4.6
+                    </div>
+
+                    {/* Import Modal */}
+                    {showImportModal && (
+                        <SyncModal
+                            books={books}
+                            relayUrl={relayUrl}
+                            onSyncPush={handleSyncPush}
+                            onSyncPull={handleSyncPull}
+                            onImportFile={handleImport}
+                            onImportGoogleSheets={handleImportGoogleSheets}
+                            onExportCSV={handleExport}
+                            onClose={() => setShowImportModal(false)}
+                        />
+                    )}
+
+                    {/* Settings Modal */}
+                    {showSettings && (
+                        <SettingsModal
+                            apiKey={apiKey}
+                            setApiKey={setApiKey}
+                            currentLanguage={language}
+                            currentBgTheme={bgTheme}
+                            onSave={saveSettings}
+                            onSaveApiKey={saveApiKey}
+                            onClose={() => setShowSettings(false)}
+                        />
+                    )}
+
+                    {/* Manual Entry Modal */}
+                    {showManualEntry && (
+                        <ManualEntryModal
+                            onConfirm={handleManualEntry}
+                            onCancel={() => setShowManualEntry(false)}
+                        />
+                    )}
+
+                    {/* Help Modal */}
+                    {showHelp && (
+                        <HelpModal onClose={() => setShowHelp(false)} />
+                    )}
+
+                    {/* Edit Book Modal */}
+                    {editingBook && (
+                        <EditBookModal
+                            book={editingBook}
+                            onConfirm={handleEditBook}
+                            onCancel={() => setEditingBook(null)}
+                        />
+                    )}
+                </div>
+                </SettingsContext.Provider>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
